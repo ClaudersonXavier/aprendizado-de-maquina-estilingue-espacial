@@ -6,89 +6,115 @@ Modifique este arquivo para ajustar o cenario sem alterar a logica do ambiente.
 # ============================================================
 # Constantes Fisicas
 # ============================================================
-G = 0.75                  # Constante gravitacional (ajuste para forca da gravidade)
-THRUST_POWER = 0.9       # Aceleracao por impulso do propulsor
-MAX_SPEED = 2.75         # Velocidade maxima da nave (evita instabilidade numerica)
-MAX_FUEL = 200.0         # Combustivel inicial
-FUEL_PICKUP = 50.0       # Combustivel ganho ao coletar um checkpoint
-FUEL_COST_PER_THRUST = 3.0  # Custo de combustivel por acao de impulso
+G = 0.75
+THRUST_POWER = 0.9
+MAX_SPEED = 2.75
+MAX_FUEL = 200.0
+FUEL_PICKUP = 50.0
+FUEL_COST_PER_THRUST = 3.0
 
 # ============================================================
-# Tela e Renderizacao
+# Tela e Renderizacao — Pixel Art
 # ============================================================
+RENDER_WIDTH = 400
+RENDER_HEIGHT = 300
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
+PIXEL_SCALE = 2
 FPS = 60
 
 # ============================================================
 # Nave
 # ============================================================
-SHIP_RADIUS = 8          # Raio de colisao da nave
-SHIP_START_POS = (155, 300)  # Spawn: superficie direita do planeta de lancamento
-MAX_TRAIL_LENGTH = 50    # Numero de pontos no rastro orbital
-LAUNCH_PLANET_INDEX = 0  # Indice do planeta de lancamento (gravidade/colisao desativadas ate escape)
-LAUNCH_ESCAPE_DISTANCE = 90  # Distancia do centro do planeta para ativar gravidade e colisao
+SHIP_RADIUS = 8
+SHIP_START_POS = (155, 300)
+MAX_TRAIL_LENGTH = 30
+LAUNCH_PLANET_INDEX = 0
+LAUNCH_ESCAPE_DISTANCE = 90
 
 # ============================================================
 # Sistema de Recompensas
 # ============================================================
-REWARD_STEP = -0.01           # Penalidade por passo vivo (incentiva rapidez)
-REWARD_THRUST_COST = -0.05    # Custo extra por usar propulsor
-REWARD_CHECKPOINT = 100.0      # Recompensa ao coletar checkpoint
-REWARD_SUCCESS = 1000.0       # Recompensa ao atracar na estacao
-REWARD_FAILURE = -1000.0       # Penalidade por colisao, sem combustivel ou fora da tela
+REWARD_STEP = -0.01
+REWARD_THRUST_COST = -0.05
+REWARD_CHECKPOINT = 100.0
+REWARD_SUCCESS = 1000.0
+REWARD_FAILURE = -1000.0
 
 # ============================================================
-# Cores
+# Paleta Pixel Art — 16 cores estilo console 16-bit
 # ============================================================
-COLOR_BG = (11, 12, 16)              # Fundo preto-azulado
-COLOR_SHIP = (255, 255, 255)         # Nave branca
-COLOR_SHIP_OUTLINE = (200, 200, 200) # Contorno da nave
-COLOR_TRAIL = (52, 152, 219)         # Rastro azul-ciano
-COLOR_STATION = (189, 195, 199)      # Estacao cinza
-COLOR_STATION_BORDER = (149, 165, 166)
-COLOR_CHECKPOINT = (46, 204, 113)    # Checkpoint verde
-COLOR_CHECKPOINT_GLOW = (39, 174, 96)
-COLOR_FUEL_BAR_BG = (44, 62, 80)     # Fundo da barra de combustivel
-COLOR_FUEL_BAR = (241, 196, 15)      # Barra de combustivel (amarelo)
-COLOR_FUEL_BAR_MID = (243, 156, 18)  # Laranja (combustivel medio)
-COLOR_FUEL_BAR_LOW = (231, 76, 60)   # Vermelho (combustivel baixo)
-COLOR_HUD_TEXT = (236, 240, 241)     # Texto do HUD
-COLOR_SUCCESS = (46, 204, 113)       # Verde sucesso
-COLOR_FAILURE = (231, 76, 60)        # Vermelho fracasso
+COLOR_BLACK       = (0, 0, 0)
+COLOR_SPACE       = (8, 12, 32)
+COLOR_BLUE        = (32, 64, 200)
+COLOR_CYAN        = (0, 220, 220)
+COLOR_GREEN       = (0, 220, 60)
+COLOR_YELLOW      = (255, 220, 0)
+COLOR_ORANGE      = (255, 140, 0)
+COLOR_RED         = (255, 40, 40)
+COLOR_MAGENTA     = (220, 40, 220)
+COLOR_PURPLE      = (100, 20, 180)
+COLOR_PINK        = (255, 100, 180)
+COLOR_WHITE       = (240, 240, 255)
+COLOR_GRAY        = (120, 130, 160)
+COLOR_DARK_GRAY   = (40, 50, 70)
+COLOR_GOLD        = (255, 200, 60)
+COLOR_BROWN       = (120, 60, 20)
+COLOR_DARK_RED    = (120, 10, 10)
+
+# Alias para compatibilidade com codigo de jogo
+COLOR_BG = COLOR_SPACE
+COLOR_TRAIL = COLOR_CYAN
+COLOR_SHIP = COLOR_WHITE
+COLOR_SHIP_OUTLINE = COLOR_CYAN
+COLOR_EXHAUST = COLOR_ORANGE
+COLOR_EXHAUST_FADE = COLOR_RED
+COLOR_STATION = COLOR_GRAY
+COLOR_STATION_BORDER = COLOR_CYAN
+COLOR_STATION_PANEL = COLOR_DARK_GRAY
+COLOR_STATION_GLOW = COLOR_CYAN
+COLOR_SUCCESS = COLOR_GREEN
+COLOR_FAILURE = COLOR_RED
+COLOR_WARNING = COLOR_ORANGE
+COLOR_HUD_TEXT = COLOR_WHITE
+COLOR_HUD_ACCENT = COLOR_CYAN
+COLOR_STAR_DIM = COLOR_GRAY
+COLOR_STAR_MED = COLOR_WHITE
+COLOR_STAR_BRIGHT = COLOR_YELLOW
+
+# HUD
+COLOR_HUD_PANEL_BG = COLOR_BLACK
+COLOR_HUD_PANEL_BORDER = COLOR_CYAN
+COLOR_FUEL_BAR_BG = COLOR_DARK_GRAY
+COLOR_FUEL_BAR = COLOR_GREEN
+COLOR_FUEL_BAR_MID = COLOR_YELLOW
+COLOR_FUEL_BAR_LOW = COLOR_RED
+COLOR_FUEL_SEGMENT = COLOR_BLACK
+
+# Checkpoints
+COLOR_CHECKPOINT = COLOR_YELLOW
+COLOR_CHECKPOINT_GLOW = COLOR_GOLD
+COLOR_CHECKPOINT_PARTICLE = COLOR_WHITE
 
 # ============================================================
-# Planetas (6 corpos celestes com diferentes massas e posicoes)
+# Planetas (6 corpos celestes)
 # ============================================================
 PLANETS = [
-    {"pos": (90, 300), "radius": 48, "mass": 700, "color": (192, 57, 43)},
-    # P1: Base de Lancamento — borda esquerda, centro vertical
-
-    {"pos": (400, 300), "radius": 55, "mass": 1200, "color": (231, 76, 60)},
-    # P2: Gigante Central — obstaculo massivo no centro do mapa
-
-    {"pos": (250, 100), "radius": 30, "mass": 250, "color": (243, 156, 18)},
-    # P3: Anao Superior — perturbacao no corredor de cima
-
-    {"pos": (580, 140), "radius": 38, "mass": 500, "color": (230, 126, 34)},
-    # P4: Gasoso Superior — guardiao antes da estacao (corredor superior)
-
-    {"pos": (300, 500), "radius": 35, "mass": 350, "color": (211, 84, 0)},
-    # P5: Rochoso Inferior — perturbacao no corredor de baixo
-
-    {"pos": (580, 460), "radius": 40, "mass": 550, "color": (241, 196, 15)},
-    # P6: Gasoso Inferior — guardiao antes da estacao (corredor inferior)
+    {"pos": (90, 300), "radius": 48, "mass": 700, "color": (220, 40, 220)},
+    {"pos": (400, 300), "radius": 55, "mass": 1200, "color": (100, 20, 180)},
+    {"pos": (250, 100), "radius": 30, "mass": 250, "color": (0, 220, 200)},
+    {"pos": (580, 140), "radius": 38, "mass": 500, "color": (32, 64, 200)},
+    {"pos": (300, 500), "radius": 35, "mass": 350, "color": (255, 100, 180)},
+    {"pos": (580, 460), "radius": 40, "mass": 550, "color": (255, 140, 0)},
 ]
 
 # ============================================================
-# Checkpoints (2 regioes com 3 cristais cada)
+# Checkpoints
 # ============================================================
 CHECKPOINTS = [
-    # Regiao 1 — Corredor Superior (acima do Gigante Central)
     {"pos": (340, 170), "radius": 12},
     {"pos": (450, 130), "radius": 12},
     {"pos": (530, 180), "radius": 12},
-    # Regiao 2 — Corredor Inferior (abaixo do Gigante Central)
     {"pos": (340, 430), "radius": 12},
     {"pos": (450, 470), "radius": 12},
     {"pos": (530, 420), "radius": 12},
@@ -100,4 +126,28 @@ CHECKPOINTS = [
 STATION_POS = (730, 300)
 STATION_WIDTH = 30
 STATION_HEIGHT = 40
-STATION_RADIUS = 22  # Raio de colisao aproximado do retangulo
+STATION_RADIUS = 22
+
+# ============================================================
+# Constantes Visuais Pixel Art
+# ============================================================
+STAR_COUNT = 80
+MAX_EXHAUST_PARTICLES = 12
+MAX_CHECKPOINT_PARTICLES = 8
+MAX_SPACE_PARTICLES = 0
+PARTICLE_LIFETIME = 8
+CHECKPOINT_PARTICLE_LIFETIME = 10
+
+# Grid pontilhado
+GRID_SPACING = 50
+GRID_DOT_GAP = 4
+
+# HUD
+HUD_WIDTH = 170
+HUD_HEIGHT = 80
+HUD_MARGIN = 6
+HUD_FUEL_BLOCKS = 10
+
+# Glitch
+GLITCH_OFFSET_MAX = 2
+GLITCH_DURATION = 8
