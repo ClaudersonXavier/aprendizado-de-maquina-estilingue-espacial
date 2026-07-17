@@ -1,21 +1,15 @@
 """
 orbital_env.py — Ambiente Odisseia Orbital (Pixel Art Retro).
-Simulador 2D de navegacao espacial com gravidade, checkpoints e estacao.
-Renderizacao em 400x300 com upscale 2x para visual 16-bit/arcade.
 """
 
 import math
 import random
 import numpy as np
 import pygame
-
 import config as cfg
 import physics as phys
 
-
-# ================================================================
-# PixelFont — Fonte bitmap 5x7 estilo arcade
-# ================================================================
+# Fonte - estilo arcade
 class PixelFont:
     """
     Fonte pixel art 5x7 desenhada manualmente.
@@ -112,10 +106,7 @@ class PixelFont:
             cx += cls.CHAR_W + 1
         return surf
 
-
-# ================================================================
 # OrbitalEnv
-# ================================================================
 class OrbitalEnv:
 
     def __init__(self, render_mode=None):
@@ -168,10 +159,7 @@ class OrbitalEnv:
         if render_mode is not None:
             self._init_pygame()
 
-    # ================================================================
     # Interface Padrao
-    # ================================================================
-
     def reset(self):
         self.ship_pos = np.array(cfg.SHIP_START_POS, dtype=np.float64).copy()
         self.ship_vel = np.zeros(2, dtype=np.float64)
@@ -324,10 +312,7 @@ class OrbitalEnv:
             float(self.fuel), checkpoint_dist, station_dist,
         ], dtype=np.float64)
 
-    # ================================================================
     # Renderizacao
-    # ================================================================
-
     def render(self):
         if self.canvas is None:
             self._init_pygame()
@@ -377,10 +362,7 @@ class OrbitalEnv:
             self.canvas = None
             self.clock = None
 
-    # ================================================================
-    # Inicializacao
-    # ================================================================
-
+    # Inicializacao Pygame
     def _init_pygame(self):
         if self.screen is not None:
             return
@@ -395,10 +377,7 @@ class OrbitalEnv:
         self.clock = pygame.time.Clock()
         self._generate_stars()
 
-    # ================================================================
-    # Fundo
-    # ================================================================
-
+    # Plano de fundo
     def _generate_stars(self):
         self.stars = []
         for _ in range(cfg.STAR_COUNT):
@@ -438,10 +417,7 @@ class OrbitalEnv:
                 if 0 <= sx < cfg.RENDER_WIDTH and 0 <= sy < cfg.RENDER_HEIGHT:
                     self.canvas.set_at((sx, sy), star["color"])
 
-    # ================================================================
-    # Rastro
-    # ================================================================
-
+    # Rastro do foguete
     def _draw_trail(self):
         trail_spacing = 3
         for idx in range(0, len(self.trail), trail_spacing):
@@ -452,10 +428,7 @@ class OrbitalEnv:
                 pygame.draw.rect(self.canvas, cfg.COLOR_CYAN,
                                  (rx - 1, ry - 1, 3, 3))
 
-    # ================================================================
     # Planetas
-    # ================================================================
-
     def _draw_planets(self):
         for i, planet in enumerate(self.planets):
             scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
@@ -607,10 +580,7 @@ class OrbitalEnv:
         pygame.draw.rect(self.canvas, cfg.COLOR_CYAN,
                          (plat_x + 2, plat_y + 2, 2, 2))
 
-    # ================================================================
     # Checkpoints
-    # ================================================================
-
     def _draw_checkpoints(self):
         current_time = pygame.time.get_ticks()
         scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
@@ -645,10 +615,7 @@ class OrbitalEnv:
             ]
             pygame.draw.polygon(self.canvas, dark, inner)
 
-    # ================================================================
-    # Estacao
-    # ================================================================
-
+    # Estacao final
     def _draw_station(self):
         scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
         sx = int(self.station_pos[0] * scale)
@@ -696,10 +663,7 @@ class OrbitalEnv:
         pygame.draw.rect(self.canvas, dock_color, (sx - 2, sy - 2, 5, 5))
         pygame.draw.rect(self.canvas, cfg.COLOR_BLACK, (sx - 3, sy - 3, 7, 7), 1)
 
-    # ================================================================
-    # Nave
-    # ================================================================
-
+    # Nave espacial
     def _draw_ship(self):
         scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
         x = self.ship_pos[0] * scale
@@ -746,10 +710,7 @@ class OrbitalEnv:
         pygame.draw.rect(self.canvas, cfg.COLOR_CYAN,
                          (cockpit_x - 1, cockpit_y - 1, 3, 3))
 
-    # ================================================================
     # Particulas (checkpoint burst)
-    # ================================================================
-
     def _spawn_checkpoint_burst(self, pos):
         if self.render_mode is None:
             return
@@ -788,10 +749,7 @@ class OrbitalEnv:
             if t > 0.2 and 0 <= px < cfg.RENDER_WIDTH and 0 <= py < cfg.RENDER_HEIGHT:
                 self.canvas.set_at((px, py), p["color"])
 
-    # ================================================================
     # Indicador de Lancamento
-    # ================================================================
-
     def _draw_launch_indicator(self):
         if self._launch_escaped:
             return
@@ -814,10 +772,7 @@ class OrbitalEnv:
                     pygame.draw.rect(self.canvas, cfg.COLOR_CYAN,
                                      (ax, ay, 4, 2))
 
-    # ================================================================
     # HUD — distribuido sem caixa
-    # ================================================================
-
     def _draw_hud(self):
         current_time = pygame.time.get_ticks()
 
@@ -973,10 +928,7 @@ class OrbitalEnv:
             pygame.draw.rect(self.canvas, bar_color,
                              (bar_x, bar_y + bar_h - filled_h, 4, filled_h))
 
-    # ================================================================
     # Status Overlay
-    # ================================================================
-
     def _draw_status_overlay(self):
         status = self.last_info.get("status", "unknown")
         current_time = pygame.time.get_ticks()
@@ -1042,10 +994,7 @@ class OrbitalEnv:
                              (frame_x + (frame_w - hint.get_width()) // 2,
                               frame_y + frame_h - 18))
 
-    # ================================================================
     # Glitch
-    # ================================================================
-
     def _trigger_glitch(self):
         self.glitch_active = True
         self.glitch_frames = cfg.GLITCH_DURATION

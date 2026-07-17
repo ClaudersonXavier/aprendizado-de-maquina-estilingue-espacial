@@ -1,6 +1,5 @@
 """
 config.py — Constantes fisicas, cores e layout do nivel.
-Modifique este arquivo para ajustar o cenario sem alterar a logica do ambiente.
 """
 
 # ============================================================
