@@ -68,6 +68,9 @@ class OrbitalEnv:
         # Rastro orbital
         self.trail = []
 
+        # Escape do planeta de lancamento (gravidade e colisao desativadas ate se afastar)
+        self._launch_escaped = False
+
         # Pygame (lazy init no primeiro render)
         self.screen = None
         self.clock = None
@@ -101,6 +104,7 @@ class OrbitalEnv:
             cp["collected"] = False
 
         self.trail = [tuple(self.ship_pos)]
+        self._launch_escaped = False
 
         return self._get_state()
 
@@ -135,7 +139,14 @@ class OrbitalEnv:
             thrust_available = True
 
         # --- 2. Calculo da aceleracao ---
-        grav_accel = phys.total_gravity(self.ship_pos, self.planets, cfg.G)
+        if self._launch_escaped:
+            active_planets = self.planets
+        else:
+            active_planets = [
+                p for i, p in enumerate(self.planets)
+                if i != cfg.LAUNCH_PLANET_INDEX
+            ]
+        grav_accel = phys.total_gravity(self.ship_pos, active_planets, cfg.G)
 
         if thrust_available:
             thrust_accel = phys.thrust_vector(action, cfg.THRUST_POWER)
@@ -154,8 +165,19 @@ class OrbitalEnv:
         if len(self.trail) > cfg.MAX_TRAIL_LENGTH:
             self.trail.pop(0)
 
-        # --- 5. Verifica colisao com planetas ---
-        for planet in self.planets:
+        # --- 5. Verifica escape do planeta de lancamento ---
+        if not self._launch_escaped:
+            launch_planet = self.planets[cfg.LAUNCH_PLANET_INDEX]
+            dist_to_launch = float(
+                np.linalg.norm(self.ship_pos - launch_planet["pos"])
+            )
+            if dist_to_launch > cfg.LAUNCH_ESCAPE_DISTANCE:
+                self._launch_escaped = True
+
+        # --- 6. Verifica colisao com planetas ---
+        for i, planet in enumerate(self.planets):
+            if not self._launch_escaped and i == cfg.LAUNCH_PLANET_INDEX:
+                continue
             if phys.check_circle_collision(
                 self.ship_pos, cfg.SHIP_RADIUS,
                 planet["pos"], planet["radius"],
@@ -168,7 +190,7 @@ class OrbitalEnv:
                 self.episode_reward += reward
                 return self._get_state(), reward, True, info
 
-        # --- 6. Verifica saida dos limites da tela ---
+        # --- 7. Verifica saida dos limites da tela ---
         if phys.is_out_of_bounds(
             self.ship_pos, cfg.SCREEN_WIDTH, cfg.SCREEN_HEIGHT
         ):
@@ -179,7 +201,7 @@ class OrbitalEnv:
             self.episode_reward += reward
             return self._get_state(), reward, True, info
 
-        # --- 7. Verifica colisao com checkpoints ---
+        # --- 8. Verifica colisao com checkpoints ---
         for cp in self.checkpoints:
             if cp["collected"]:
                 continue
@@ -192,7 +214,7 @@ class OrbitalEnv:
                 reward += cfg.REWARD_CHECKPOINT
                 info["checkpoint_collected"] = True
 
-        # --- 8. Verifica colisao com a estacao ---
+        # --- 9. Verifica colisao com a estacao ---
         station_center = (
             float(self.station_pos[0]),
             float(self.station_pos[1]),
@@ -208,7 +230,7 @@ class OrbitalEnv:
             self.episode_reward += reward
             return self._get_state(), reward, True, info
 
-        # --- 9. Verifica combustivel zerado ---
+        # --- 10. Verifica combustivel zerado ---
         if self.fuel <= 0.0:
             reward = cfg.REWARD_FAILURE
             self.done = True
@@ -217,7 +239,7 @@ class OrbitalEnv:
             self.episode_reward += reward
             return self._get_state(), reward, True, info
 
-        # --- 10. Recompensas continuas ---
+        # --- 11. Recompensas continuas ---
         reward += cfg.REWARD_STEP
         if action != 0:
             reward += cfg.REWARD_THRUST_COST
@@ -334,24 +356,25 @@ class OrbitalEnv:
             pygame.draw.line(self.screen, (r, g, b), p1, p2, width=2)
 
     def _draw_planets(self):
-        """Desenha todos os planetas com gradiente e borda."""
-        for planet in self.planets:
+        """Desenha todos os planetas. O planeta de lancamento e desenhado como arco."""
+        for i, planet in enumerate(self.planets):
             px = int(planet["pos"][0])
             py = int(planet["pos"][1])
             radius = planet["radius"]
 
-            # Corpo principal
+            if i == cfg.LAUNCH_PLANET_INDEX:
+                self._draw_launch_arc(planet, px, py, radius)
+                continue
+
             pygame.draw.circle(
                 self.screen, planet["color"], (px, py), radius,
             )
 
-            # Borda escura para profundidade
             border_color = tuple(max(0, c - 40) for c in planet["color"])
             pygame.draw.circle(
                 self.screen, border_color, (px, py), radius, width=2,
             )
 
-            # Brilho no canto superior-esquerdo (efeito de iluminacao)
             highlight_radius = max(4, radius // 3)
             highlight_x = px - radius // 3
             highlight_y = py - radius // 3
@@ -479,11 +502,64 @@ class OrbitalEnv:
 
     def _draw_launch_indicator(self):
         """Desenha uma seta indicando o planeta de lancamento."""
-        px = int(self.planets[0]["pos"][0]) + self.planets[0]["radius"] + 8
-        py = int(self.planets[0]["pos"][1])
+        launch_planet = self.planets[cfg.LAUNCH_PLANET_INDEX]
+        px = int(launch_planet["pos"][0]) + launch_planet["radius"] + 8
+        py = int(launch_planet["pos"][1])
         label = self._small_font.render("LANCAMENTO", True, cfg.COLOR_HUD_TEXT)
-        label_rect = label.get_rect(midleft=(px, py - self.planets[0]["radius"] - 6))
+        label_rect = label.get_rect(
+            midleft=(px, py - launch_planet["radius"] - 6)
+        )
         self.screen.blit(label, label_rect)
+
+    def _draw_launch_arc(self, planet, px, py, radius):
+        """
+        Desenha o planeta de lancamento como um arco preenchido (setor)
+        no lado direito, simulando um planeta surgindo da borda da tela.
+        """
+        color = planet["color"]
+        num_points = 30
+        start_angle = -math.pi / 3
+        end_angle = math.pi / 3
+
+        points = [(float(px), float(py))]
+        for j in range(num_points + 1):
+            angle = start_angle + (end_angle - start_angle) * j / num_points
+            x = px + radius * math.cos(angle)
+            y = py + radius * math.sin(angle)
+            points.append((x, y))
+
+        pygame.draw.polygon(self.screen, color, points)
+
+        arc_rect = (px - radius, py - radius, radius * 2, radius * 2)
+        border_color = tuple(max(0, c - 40) for c in color)
+        pygame.draw.arc(
+            self.screen, border_color, arc_rect,
+            start_angle, end_angle, width=2,
+        )
+
+        lines_start = self._arc_point(px, py, radius, start_angle)
+        lines_end = self._arc_point(px, py, radius, end_angle)
+        pygame.draw.line(
+            self.screen, border_color, (float(px), float(py)), lines_start, width=2,
+        )
+        pygame.draw.line(
+            self.screen, border_color, (float(px), float(py)), lines_end, width=2,
+        )
+
+        highlight_radius = max(4, radius // 3)
+        highlight_x = px + radius // 2
+        highlight_y = py - radius // 3
+        lighter = tuple(min(255, c + 80) for c in color)
+        pygame.draw.circle(
+            self.screen, lighter,
+            (int(highlight_x), int(highlight_y)),
+            highlight_radius,
+        )
+
+    @staticmethod
+    def _arc_point(cx, cy, radius, angle):
+        """Retorna (x, y) de um ponto na borda do arco, dado o angulo."""
+        return (cx + radius * math.cos(angle), cy + radius * math.sin(angle))
 
     # ================================================================
     # HUD

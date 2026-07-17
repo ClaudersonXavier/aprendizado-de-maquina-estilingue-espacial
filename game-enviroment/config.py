@@ -6,12 +6,12 @@ Modifique este arquivo para ajustar o cenario sem alterar a logica do ambiente.
 # ============================================================
 # Constantes Fisicas
 # ============================================================
-G = 3.0                  # Constante gravitacional (ajuste para forca da gravidade)
-THRUST_POWER = 0.5       # Aceleracao por impulso do propulsor
-MAX_SPEED = 12.0         # Velocidade maxima da nave (evita instabilidade numerica)
+G = 0.75                  # Constante gravitacional (ajuste para forca da gravidade)
+THRUST_POWER = 0.9       # Aceleracao por impulso do propulsor
+MAX_SPEED = 2.75         # Velocidade maxima da nave (evita instabilidade numerica)
 MAX_FUEL = 200.0         # Combustivel inicial
 FUEL_PICKUP = 50.0       # Combustivel ganho ao coletar um checkpoint
-FUEL_COST_PER_THRUST = 1.0  # Custo de combustivel por acao de impulso
+FUEL_COST_PER_THRUST = 3.0  # Custo de combustivel por acao de impulso
 
 # ============================================================
 # Tela e Renderizacao
@@ -26,15 +26,17 @@ FPS = 60
 SHIP_RADIUS = 8          # Raio de colisao da nave
 SHIP_START_POS = (155, 300)  # Spawn: superficie direita do planeta de lancamento
 MAX_TRAIL_LENGTH = 50    # Numero de pontos no rastro orbital
+LAUNCH_PLANET_INDEX = 0  # Indice do planeta de lancamento (gravidade/colisao desativadas ate escape)
+LAUNCH_ESCAPE_DISTANCE = 90  # Distancia do centro do planeta para ativar gravidade e colisao
 
 # ============================================================
 # Sistema de Recompensas
 # ============================================================
 REWARD_STEP = -0.01           # Penalidade por passo vivo (incentiva rapidez)
 REWARD_THRUST_COST = -0.05    # Custo extra por usar propulsor
-REWARD_CHECKPOINT = 50.0      # Recompensa ao coletar checkpoint
+REWARD_CHECKPOINT = 100.0      # Recompensa ao coletar checkpoint
 REWARD_SUCCESS = 1000.0       # Recompensa ao atracar na estacao
-REWARD_FAILURE = -100.0       # Penalidade por colisao, sem combustivel ou fora da tela
+REWARD_FAILURE = -1000.0       # Penalidade por colisao, sem combustivel ou fora da tela
 
 # ============================================================
 # Cores
