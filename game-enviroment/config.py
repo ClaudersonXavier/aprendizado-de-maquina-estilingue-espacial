@@ -10,7 +10,7 @@ THRUST_POWER = 0.9
 MAX_SPEED = 2.75
 MAX_FUEL = 200.0
 FUEL_PICKUP = 50.0
-FUEL_COST_PER_THRUST = 3.0
+FUEL_COST_PER_THRUST = 2.5
 
 # ============================================================
 # Tela e Renderizacao — Pixel Art
