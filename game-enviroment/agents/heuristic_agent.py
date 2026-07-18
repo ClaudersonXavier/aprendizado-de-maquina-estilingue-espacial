@@ -34,14 +34,21 @@ from agents.auto_pilot import AutoPilot
 from agents.visualization import (
     simplify_path,
     draw_a_star_overlay,
+    draw_web_lines,
+    draw_grid_overlay,
+    draw_blocked_exclamations,
+    draw_current_node_ripple,
+    draw_start_beacon,
     draw_path_line,
     draw_agent_hud,
     get_current_goal,
 )
 from agents.replay_buffer import save_run, load_run, list_runs
 
-NODES_PER_FRAME = 10
+NODES_PER_FRAME = 1
 REPLAN_INTERVAL_MS = 1000
+PATH_HOLD_FRAMES = 90
+PLANNING_FRAME_DELAY = 200
 
 
 # ============================================================
@@ -62,6 +69,7 @@ def main():
     checkpoint_order = []
     current_segment_target = None
     current_segment_path = None
+    current_segment_raw = None
 
     grid_map = GridMap(env.planets, env.checkpoints, env.station_pos,
                        global_margin)
@@ -77,6 +85,10 @@ def main():
     phase = "planning"
     last_replan_time = pygame.time.get_ticks()
     last_dist_to_goal = None
+
+    planning_background = None
+    start_cell = grid_map.pos_to_cell(*ship_pos)
+    path_hold_counter = 0
 
     running = True
 
@@ -99,6 +111,7 @@ def main():
                     segments = []
                     checkpoint_order = []
                     current_segment_path = None
+                    current_segment_raw = None
 
                     obs = env.reset()
                     grid_map = GridMap(env.planets, env.checkpoints,
@@ -114,40 +127,69 @@ def main():
                     phase = "planning"
                     last_replan_time = pygame.time.get_ticks()
                     last_dist_to_goal = None
+                    planning_background = None
+                    start_cell = grid_map.pos_to_cell(*ship_pos)
+                    path_hold_counter = 0
 
         if phase == "planning":
-            env.render()
+            if planning_background is None:
+                env.render()
+                planning_background = env.screen.copy()
+            else:
+                env.screen.blit(planning_background, (0, 0))
+
             search_state = None
 
-            for _ in range(NODES_PER_FRAME):
-                try:
-                    search_state = next(a_star_gen)
-                except StopIteration:
-                    break
-                if search_state.get("path") is not None:
-                    break
+            if path_hold_counter > 0:
+                path_hold_counter -= 1
+                if path_hold_counter == 0:
+                    phase = "flying"
+                    last_replan_time = pygame.time.get_ticks()
+                    last_dist_to_goal = math.hypot(
+                        obs[0] - goal_pos[0], obs[1] - goal_pos[1]
+                    )
+            else:
+                for _ in range(NODES_PER_FRAME):
+                    try:
+                        search_state = next(a_star_gen)
+                    except StopIteration:
+                        break
+                    if search_state.get("path") is not None:
+                        break
 
             if search_state is not None:
+                draw_grid_overlay(env.screen)
                 draw_a_star_overlay(env.screen, search_state)
+                draw_web_lines(env.screen, search_state.get("came_from", {}))
+                draw_current_node_ripple(
+                    env.screen, search_state.get("current")
+                )
+                draw_start_beacon(env.screen, start_cell)
+                draw_blocked_exclamations(
+                    env.screen,
+                    search_state.get("blocked", []),
+                    env.planets,
+                )
 
                 found_path = search_state.get("path")
                 if found_path is not None:
                     a_star_gen = None
 
                     if found_path:
+                        current_segment_raw = list(found_path)
                         path = simplify_path(found_path)
                         autopilot = AutoPilot(path, env.planets)
                     else:
+                        current_segment_raw = [ship_pos, goal_pos]
                         path = [ship_pos, goal_pos]
                         autopilot = AutoPilot(path, env.planets)
 
                     current_segment_path = path
 
-                    phase = "flying"
-                    last_replan_time = pygame.time.get_ticks()
-                    last_dist_to_goal = math.hypot(
-                        obs[0] - goal_pos[0], obs[1] - goal_pos[1]
-                    )
+                    draw_path_line(env.screen, path)
+                    path_hold_counter = PATH_HOLD_FRAMES
+                else:
+                    pygame.time.wait(PLANNING_FRAME_DELAY)
 
             if crash_timer > 0:
                 draw_agent_hud(env.screen, attempt, global_margin,
@@ -182,8 +224,8 @@ def main():
                         if current_segment_target is not None:
                             segments.append({
                                 "target": current_segment_target,
-                                "waypoints": current_segment_path
-                                if current_segment_path
+                                "waypoints": current_segment_raw
+                                if current_segment_raw
                                 else [],
                             })
 
@@ -222,8 +264,8 @@ def main():
                     if current_segment_target is not None:
                         segments.append({
                             "target": current_segment_target,
-                            "waypoints": current_segment_path
-                            if current_segment_path
+                            "waypoints": current_segment_raw
+                            if current_segment_raw
                             else [],
                         })
                         checkpoint_order.append(current_segment_target)
@@ -234,6 +276,7 @@ def main():
                     goal_pos = get_current_goal(env, ship_pos)
                     current_segment_target = goal_pos
                     current_segment_path = None
+                    current_segment_raw = None
 
                     planner = AStarPlanner(grid_map)
                     a_star_gen = planner.search(ship_pos, goal_pos)
@@ -242,6 +285,9 @@ def main():
                     phase = "planning"
                     last_replan_time = pygame.time.get_ticks()
                     last_dist_to_goal = None
+                    planning_background = None
+                    start_cell = grid_map.pos_to_cell(*ship_pos)
+                    path_hold_counter = 0
                     continue
 
                 now = pygame.time.get_ticks()
@@ -260,8 +306,8 @@ def main():
                         if current_segment_target is not None:
                             segments.append({
                                 "target": current_segment_target,
-                                "waypoints": current_segment_path
-                                if current_segment_path
+                                "waypoints": current_segment_raw
+                                if current_segment_raw
                                 else [],
                             })
 
@@ -271,6 +317,7 @@ def main():
                         goal_pos = get_current_goal(env, ship_pos)
                         current_segment_target = goal_pos
                         current_segment_path = None
+                        current_segment_raw = None
 
                         planner = AStarPlanner(grid_map)
                         a_star_gen = planner.search(ship_pos, goal_pos)
@@ -279,6 +326,9 @@ def main():
                         phase = "planning"
                         last_replan_time = now
                         last_dist_to_goal = None
+                        planning_background = None
+                        start_cell = grid_map.pos_to_cell(*ship_pos)
+                        path_hold_counter = 0
                         continue
                     last_dist_to_goal = current_dist
                     last_replan_time = now
@@ -289,7 +339,7 @@ def main():
 
 
 # ============================================================
-# Modo Treinado — carrega waypoints salvos, sem A*
+# Modo Treinado — carrega waypoints salvos, com replanning fallback
 # ============================================================
 def main_trained(run_id):
     run_data = load_run(run_id)
@@ -307,15 +357,23 @@ def main_trained(run_id):
 
     segments = run_data["segments"]
     stats = run_data["stats"]
+    checkpoint_order = run_data.get("checkpoint_order", [])
 
     print(f"Run {run_data['run_id']:03d} carregado:")
     print(f"  Segmentos: {len(segments)}")
     print(f"  Steps: {stats['steps']}  Thrusts: {stats['thrusts']}")
     print(f"  Reward: {stats['reward']:.0f}")
 
+    global_margin = 0.0
     path = None
     autopilot = None
     seg_idx = 0
+    collected_count = 0
+    crash_timer = 0
+    crash_info = ""
+
+    last_replan_time = pygame.time.get_ticks()
+    last_dist_to_goal = None
 
     running = True
     while running:
@@ -326,26 +384,34 @@ def main_trained(run_id):
                 if event.key == pygame.K_ESCAPE:
                     running = False
                 elif event.key == pygame.K_r:
+                    global_margin += 5.0
+                    crash_info = (
+                        f"TENTATIVA  MARGEM +{global_margin:.0f}px"
+                    )
+                    crash_timer = 120
                     obs = env.reset()
                     autopilot = None
                     path = None
                     seg_idx = 0
-                    if seg_idx < len(segments):
-                        seg = segments[seg_idx]
-                        path = seg["waypoints"]
-                        autopilot = AutoPilot(path, env.planets)
+                    collected_count = 0
+                    last_replan_time = pygame.time.get_ticks()
+                    last_dist_to_goal = None
 
         if env.done:
             env.render()
             if path:
                 draw_path_line(env.screen, path)
+            if crash_timer > 0:
+                draw_agent_hud(env.screen, 0, global_margin,
+                               crash_info, crash_timer)
+                crash_timer -= 1
             pygame.display.flip()
             continue
 
         if autopilot is None:
             if seg_idx < len(segments):
                 seg = segments[seg_idx]
-                path = seg["waypoints"]
+                path = [list(wp) for wp in seg["waypoints"]]
                 autopilot = AutoPilot(path, env.planets)
             else:
                 env.render()
@@ -356,7 +422,7 @@ def main_trained(run_id):
             seg_idx += 1
             if seg_idx < len(segments):
                 seg = segments[seg_idx]
-                path = seg["waypoints"]
+                path = [list(wp) for wp in seg["waypoints"]]
                 autopilot = AutoPilot(path, env.planets)
 
         action = autopilot.get_action(obs) if autopilot else 0
@@ -365,7 +431,56 @@ def main_trained(run_id):
 
         if path:
             draw_path_line(env.screen, path)
+        if crash_timer > 0:
+            draw_agent_hud(env.screen, 0, global_margin,
+                           crash_info, crash_timer)
+            crash_timer -= 1
         pygame.display.flip()
+
+        if env.done:
+            status = env.last_info.get("status", "")
+            if status == "docked":
+                crash_info = f"SUCESSO!  Run {run_data['run_id']:03d}"
+                crash_timer = 300
+            else:
+                global_margin += 5.0
+                crash_info = f"FALHA  MARGEM +{global_margin:.0f}px"
+                crash_timer = 120
+        else:
+            if info.get("checkpoint_collected"):
+                collected_count += 1
+                seg_idx = min(collected_count, len(segments) - 1)
+                autopilot = None
+                last_dist_to_goal = None
+                continue
+
+            now = pygame.time.get_ticks()
+            if now - last_replan_time > REPLAN_INTERVAL_MS:
+                ship_pos = (float(obs[0]), float(obs[1]))
+                goal_pos = get_current_goal(env, ship_pos)
+                current_dist = math.hypot(
+                    obs[0] - goal_pos[0],
+                    obs[1] - goal_pos[1],
+                )
+                if (
+                    last_dist_to_goal is not None
+                    and current_dist > last_dist_to_goal + 10
+                ):
+                    grid_map = GridMap(
+                        env.planets, env.checkpoints,
+                        env.station_pos, global_margin,
+                    )
+                    planner = AStarPlanner(grid_map)
+                    full_gen = list(planner.search(ship_pos, goal_pos))
+                    last_state = full_gen[-1] if full_gen else None
+                    if last_state and last_state.get("path"):
+                        path = last_state["path"]
+                        autopilot = AutoPilot(path, env.planets)
+                    last_replan_time = now
+                    last_dist_to_goal = None
+                    continue
+                last_dist_to_goal = current_dist
+                last_replan_time = now
 
     env.close()
     pygame.quit()

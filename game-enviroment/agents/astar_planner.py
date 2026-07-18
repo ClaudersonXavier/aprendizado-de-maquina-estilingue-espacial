@@ -36,6 +36,8 @@ class AStarPlanner:
                 "closed": [],
                 "current": (sr, sc),
                 "path": [self.grid.cell_to_pos(sr, sc)],
+                "came_from": {},
+                "blocked": [],
             }
             return
 
@@ -45,6 +47,7 @@ class AStarPlanner:
         came_from = {}
         closed_set = set()
         open_set = {(sr, sc)}
+        blocked_set = set()
 
         while open_heap:
             f, g, _, r, c = heapq.heappop(open_heap)
@@ -58,6 +61,8 @@ class AStarPlanner:
                 "closed": list(closed_set),
                 "current": (r, c),
                 "path": None,
+                "came_from": came_from,
+                "blocked": list(blocked_set),
             }
 
             if (r, c) == (gr, gc):
@@ -68,6 +73,8 @@ class AStarPlanner:
                     "closed": list(closed_set),
                     "current": (r, c),
                     "path": path,
+                    "came_from": came_from,
+                    "blocked": list(blocked_set),
                 }
                 return
 
@@ -77,6 +84,7 @@ class AStarPlanner:
                 if (nr, nc) in closed_set:
                     continue
                 if not self.grid.is_passable(nr, nc):
+                    blocked_set.add((nr, nc))
                     continue
 
                 grav_cost = self._gravity_cost(nr, nc)
@@ -97,6 +105,8 @@ class AStarPlanner:
             "closed": list(closed_set),
             "current": None,
             "path": None,
+            "came_from": came_from,
+            "blocked": list(blocked_set),
         }
 
     def _gravity_cost(self, r, c):
