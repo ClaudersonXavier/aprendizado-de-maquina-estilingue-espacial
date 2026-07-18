@@ -85,16 +85,24 @@ pip install -r requirements.txt
 
 ## ▶️ Como executar
 
-```bash
-# Da raiz do projeto:
-python game-enviroment\main.py
+A partir da **raiz do projeto**:
 
-# Ou entre na pasta e execute:
-cd game-enviroment
-python main.py
+```bash
+# Jogar manualmente (modo jogador)
+python run_game.py
+
+# Agente de busca heurística (A* + AutoPilot)
+python run_heuristic.py
+
+# Agente com replay de uma run salva
+python run_heuristic.py --trained latest   # run mais recente
+python run_heuristic.py --trained 001      # run específica
+
+# Listar runs de treino salvas
+python run_heuristic.py --list
 ```
 
-Ao executar, você verá:
+Ao executar `run_game.py`, você verá:
 1. **Tela de título** com o nome "ODISSEIA ORBITAL" em neon, estrelas animadas e grid de fundo
 2. Pressione **ENTER** para iniciar (ou **ESC** para sair)
 3. O jogo começa com a nave na superfície do planeta de lançamento (borda esquerda)
@@ -114,16 +122,27 @@ Ao executar, você verá:
 ## 📁 Estrutura do Projeto
 
 ```text
-aprendizado-de-maquina-estilingue-espacial/
-├── requirements.txt            # Dependências do projeto
-├── README.md                   # Este arquivo
+estilingue-espacial/
+├── run_game.py                  # Atalho: jogar manualmente
+├── run_heuristic.py             # Atalho: agente de busca heurística
+├── requirements.txt             # Dependências do projeto
+├── README.md                    # Este arquivo
 ├── docs/
-│   └── fotos/                  # Fotos da equipe
-├── game-enviroment/
-│   ├── main.py                 # Entrada principal: tela de título + loop de jogo
-│   ├── orbital_env.py          # Classe OrbitalEnv: lógica, renderização, interface RL
-│   ├── physics.py              # Física pura: gravidade, colisões, cinemática (sem pygame)
-│   └── config.py               # Constantes: física, cores, layout, recompensas
+│   └── fotos/                   # Fotos da equipe
+└── game-enviroment/
+    ├── main.py                  # Tela de título + loop de jogo manual
+    ├── orbital_env.py           # Classe OrbitalEnv: lógica, renderização, interface RL
+    ├── physics.py               # Física pura: gravidade, colisões, cinemática
+    ├── config.py                # Constantes: física, cores, layout, recompensas
+    └── agents/
+        └── heuristic_goal/      # Agente de Busca Heurística (A*)
+            ├── heuristic_agent.py    # Entrada principal do agente
+            ├── grid_map.py           # Grid 40x30 com margem proporcional à massa
+            ├── astar_planner.py      # A* geradora com custo gravitacional
+            ├── auto_pilot.py         # Piloto com velocidade-alvo e evasão
+            ├── visualization.py      # Overlay A*, linha guia e HUD
+            ├── replay_buffer.py      # Save/Load de experiências de sucesso
+            └── training_data/        # Runs de treino salvas (.json)
 ```
 
 ## 🧠 Ambiente e Agentes

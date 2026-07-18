@@ -13,7 +13,7 @@ import os
 from datetime import datetime
 
 _AGENTS_DIR = os.path.dirname(os.path.abspath(__file__))
-SAVE_DIR = os.path.join(_AGENTS_DIR, "..", "training_data")
+SAVE_DIR = os.path.join(_AGENTS_DIR, "training_data")
 SAVE_DIR = os.path.normpath(SAVE_DIR)
 
 
@@ -34,20 +34,23 @@ def get_next_run_id():
     return max(nums) + 1 if nums else 1
 
 
-def save_run(segments, checkpoint_order, stats):
+def save_run(segments, checkpoint_order, stats, actions, checkpoint_indices=None):
     run_id = get_next_run_id()
     data = {
-        "version": 1,
+        "version": 2,
         "run_id": run_id,
         "timestamp": datetime.now().isoformat(),
         "stats": stats,
         "checkpoint_order": [
             list(cp) for cp in checkpoint_order
         ],
+        "checkpoint_action_indices": checkpoint_indices or [],
+        "actions": actions,
         "segments": [
             {
                 "target": list(seg["target"]),
                 "waypoints": [list(wp) for wp in seg["waypoints"]],
+                "display_waypoints": [list(wp) for wp in seg.get("display_waypoints", seg["waypoints"])],
             }
             for seg in segments
         ],
@@ -81,12 +84,19 @@ def load_run(run_id):
         {
             "target": tuple(seg["target"]),
             "waypoints": [tuple(wp) for wp in seg["waypoints"]],
+            "display_waypoints": [tuple(wp) for wp in seg.get(
+                "display_waypoints", seg["waypoints"]
+            )],
         }
         for seg in data["segments"]
     ]
     data["checkpoint_order"] = [
         tuple(cp) for cp in data["checkpoint_order"]
     ]
+    data["actions"] = data.get("actions", [])
+    data["checkpoint_action_indices"] = data.get(
+        "checkpoint_action_indices", []
+    )
     return data
 
 

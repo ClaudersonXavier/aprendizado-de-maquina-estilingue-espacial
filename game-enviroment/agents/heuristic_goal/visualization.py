@@ -5,7 +5,7 @@ visualization.py — Funcoes de desenho para overlay do A*, linha guia e HUD do 
 import math
 import pygame
 import config as cfg
-from agents.grid_map import CELL_SIZE
+from .grid_map import CELL_SIZE
 
 _HALF_CELL = CELL_SIZE / 2
 

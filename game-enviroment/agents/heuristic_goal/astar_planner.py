@@ -9,7 +9,7 @@ massivos ficam "caras", forcando o A* a desviar para o vacuo espacial.
 import math
 import heapq
 from collections import deque
-from agents.grid_map import CELL_SIZE
+from .grid_map import CELL_SIZE
 import config as cfg
 
 GRAVITY_COST_FACTOR = 0.5
