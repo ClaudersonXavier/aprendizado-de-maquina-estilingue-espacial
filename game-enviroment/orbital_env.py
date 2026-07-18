@@ -1,38 +1,120 @@
 """
-orbital_env.py — Ambiente Odisséia Orbital.
-Simulador 2D de navegacao espacial com gravidade, checkpoints e estacao.
-Interface padrao: reset(), step(action), render(), close().
+orbital_env.py — Ambiente Odisseia Orbital (Pixel Art Retro).
 """
 
 import math
+import random
 import numpy as np
 import pygame
-
 import config as cfg
 import physics as phys
 
+# Fonte - estilo arcade
+class PixelFont:
+    """
+    Fonte pixel art 5x7 desenhada manualmente.
+    Suporta A-Z, 0-9, e simbolos basicos.
+    """
 
+    CHAR_W = 5
+    CHAR_H = 7
+
+    _GLYPHS = {}
+
+    @classmethod
+    def _init_glyphs(cls):
+        if cls._GLYPHS:
+            return
+
+        def glyph(rows):
+            """Converte lista de strings '.#' em matriz de bools."""
+            g = [[False] * cls.CHAR_W for _ in range(cls.CHAR_H)]
+            for y, row in enumerate(rows[:cls.CHAR_H]):
+                for x, ch in enumerate(row[:cls.CHAR_W]):
+                    g[y][x] = (ch == '#')
+            return g
+
+        cls._GLYPHS['A'] = glyph(['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'])
+        cls._GLYPHS['B'] = glyph(['####.', '#...#', '####.', '#...#', '#...#', '#...#', '####.'])
+        cls._GLYPHS['C'] = glyph(['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'])
+        cls._GLYPHS['D'] = glyph(['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'])
+        cls._GLYPHS['E'] = glyph(['#####', '#....', '####.', '#....', '#....', '#....', '#####'])
+        cls._GLYPHS['F'] = glyph(['#####', '#....', '####.', '#....', '#....', '#....', '#....'])
+        cls._GLYPHS['G'] = glyph(['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.###.'])
+        cls._GLYPHS['H'] = glyph(['#...#', '#...#', '#####', '#...#', '#...#', '#...#', '#...#'])
+        cls._GLYPHS['I'] = glyph(['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '#####'])
+        cls._GLYPHS['J'] = glyph(['#####', '...#.', '...#.', '...#.', '...#.', '#..#.', '.##..'])
+        cls._GLYPHS['K'] = glyph(['#...#', '#..#.', '###..', '##...', '###..', '#..#.', '#...#'])
+        cls._GLYPHS['L'] = glyph(['#....', '#....', '#....', '#....', '#....', '#....', '#####'])
+        cls._GLYPHS['M'] = glyph(['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'])
+        cls._GLYPHS['N'] = glyph(['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'])
+        cls._GLYPHS['O'] = glyph(['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'])
+        cls._GLYPHS['P'] = glyph(['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'])
+        cls._GLYPHS['Q'] = glyph(['.###.', '#...#', '#...#', '#...#', '#.#.#', '#..#.', '.##.#'])
+        cls._GLYPHS['R'] = glyph(['####.', '#...#', '#...#', '####.', '###..', '#..#.', '#...#'])
+        cls._GLYPHS['S'] = glyph(['.###.', '#...#', '#....', '.###.', '....#', '#...#', '.###.'])
+        cls._GLYPHS['T'] = glyph(['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'])
+        cls._GLYPHS['U'] = glyph(['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'])
+        cls._GLYPHS['V'] = glyph(['#...#', '#...#', '#...#', '#...#', '.#.#.', '.#.#.', '..#..'])
+        cls._GLYPHS['W'] = glyph(['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'])
+        cls._GLYPHS['X'] = glyph(['#...#', '.#.#.', '..#..', '..#..', '..#..', '.#.#.', '#...#'])
+        cls._GLYPHS['Y'] = glyph(['#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..', '..#..'])
+        cls._GLYPHS['Z'] = glyph(['#####', '....#', '...#.', '..#..', '.#...', '#....', '#####'])
+
+        cls._GLYPHS['0'] = glyph(['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'])
+        cls._GLYPHS['1'] = glyph(['..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '#####'])
+        cls._GLYPHS['2'] = glyph(['.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####'])
+        cls._GLYPHS['3'] = glyph(['.###.', '#...#', '....#', '..##.', '....#', '#...#', '.###.'])
+        cls._GLYPHS['4'] = glyph(['...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.'])
+        cls._GLYPHS['5'] = glyph(['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'])
+        cls._GLYPHS['6'] = glyph(['.###.', '#...#', '#....', '####.', '#...#', '#...#', '.###.'])
+        cls._GLYPHS['7'] = glyph(['#####', '....#', '...#.', '..#..', '.#...', '#....', '#....'])
+        cls._GLYPHS['8'] = glyph(['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'])
+        cls._GLYPHS['9'] = glyph(['.###.', '#...#', '#...#', '.####', '....#', '#...#', '.###.'])
+
+        cls._GLYPHS['.'] = glyph(['.....', '.....', '.....', '.....', '.....', '.....', '..#..'])
+        cls._GLYPHS[','] = glyph(['.....', '.....', '.....', '.....', '.....', '..#..', '.#...'])
+        cls._GLYPHS['!'] = glyph(['..#..', '..#..', '..#..', '..#..', '..#..', '.....', '..#..'])
+        cls._GLYPHS['?'] = glyph(['.###.', '#...#', '....#', '...#.', '..#..', '.....', '..#..'])
+        cls._GLYPHS[':'] = glyph(['.....', '..#..', '.....', '.....', '..#..', '.....', '.....'])
+        cls._GLYPHS['-'] = glyph(['.....', '.....', '#####', '.....', '.....', '.....', '.....'])
+        cls._GLYPHS['+'] = glyph(['.....', '..#..', '..#..', '#####', '..#..', '..#..', '.....'])
+        cls._GLYPHS['/'] = glyph(['....#', '...#.', '...#.', '..#..', '.#...', '.#...', '#....'])
+        cls._GLYPHS[' '] = glyph(['.....', '.....', '.....', '.....', '.....', '.....', '.....'])
+        cls._GLYPHS['['] = glyph(['###..', '#....', '#....', '#....', '#....', '#....', '###..'])
+        cls._GLYPHS[']'] = glyph(['..###', '....#', '....#', '....#', '....#', '....#', '..###'])
+        cls._GLYPHS['('] = glyph(['...#.', '..#..', '.#...', '.#...', '.#...', '..#..', '...#.'])
+        cls._GLYPHS[')'] = glyph(['.#...', '..#..', '...#.', '...#.', '...#.', '..#..', '.#...'])
+        cls._GLYPHS['#'] = glyph(['.#.#.', '.#.#.', '#####', '.#.#.', '#####', '.#.#.', '.#.#.'])
+        cls._GLYPHS['*'] = glyph(['..#..', '#.#.#', '.##..', '..#..', '.##..', '#.#.#', '..#..'])
+
+    @classmethod
+    def render(cls, text, color):
+        cls._init_glyphs()
+        text = text.upper()
+        w = len(text) * (cls.CHAR_W + 1)
+        h = cls.CHAR_H
+        surf = pygame.Surface((w, h), pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
+        cx = 0
+        for ch in text:
+            gl = cls._GLYPHS.get(ch, cls._GLYPHS['?'])
+            for y in range(cls.CHAR_H):
+                for x in range(cls.CHAR_W):
+                    if gl[y][x]:
+                        surf.set_at((cx + x, y), color)
+            cx += cls.CHAR_W + 1
+        return surf
+
+# OrbitalEnv
 class OrbitalEnv:
-    """
-    Ambiente de navegacao orbital 2D.
-
-    A nave deve partir do planeta de lancamento, navegar por um campo
-    gravitacional com 6 planetas, coletar checkpoints de combustivel e
-    atracar na estacao espacial.
-
-    Atributos:
-        action_space_n (int): 5 acoes discretas (0-4).
-        obs_shape (tuple): (7,) — dimensao do vetor de observacao.
-    """
 
     def __init__(self, render_mode=None):
         self.render_mode = render_mode
 
-        # Interface descritiva (nao depende de gymnasium)
         self.action_space_n = 5
         self.obs_shape = (7,)
 
-        # Planetas (copia do config para evitar mutacao compartilhada)
         self.planets = [
             {
                 "pos": np.array(p["pos"], dtype=np.float64),
@@ -43,7 +125,6 @@ class OrbitalEnv:
             for p in cfg.PLANETS
         ]
 
-        # Checkpoints
         self.checkpoints = []
         for cp in cfg.CHECKPOINTS:
             self.checkpoints.append({
@@ -52,11 +133,9 @@ class OrbitalEnv:
                 "collected": False,
             })
 
-        # Estacao espacial
         self.station_pos = np.array(cfg.STATION_POS, dtype=np.float64)
         self.station_radius = cfg.STATION_RADIUS
 
-        # Estado da nave (inicializado no reset)
         self.ship_pos = None
         self.ship_vel = None
         self.fuel = 0.0
@@ -65,33 +144,23 @@ class OrbitalEnv:
         self.episode_steps = 0
         self.last_info = {"status": "not_started"}
 
-        # Rastro orbital
         self.trail = []
-
-        # Escape do planeta de lancamento (gravidade e colisao desativadas ate se afastar)
         self._launch_escaped = False
 
-        # Pygame (lazy init no primeiro render)
+        self.checkpoint_particles = []
+
+        self.glitch_frames = 0
+        self.glitch_active = False
+
         self.screen = None
+        self.canvas = None
         self.clock = None
-        self._font = None
-        self._small_font = None
 
         if render_mode is not None:
             self._init_pygame()
 
-    # ================================================================
-    # Metodos da Interface Padrao
-    # ================================================================
-
+    # Interface Padrao
     def reset(self):
-        """
-        Reinicia o episodio. Restaura posicao, velocidade, combustivel,
-        checkpoints e rastro. Retorna a observacao inicial.
-
-        Returns:
-            np.ndarray: vetor de observacao com 7 elementos.
-        """
         self.ship_pos = np.array(cfg.SHIP_START_POS, dtype=np.float64).copy()
         self.ship_vel = np.zeros(2, dtype=np.float64)
         self.fuel = cfg.MAX_FUEL
@@ -105,40 +174,24 @@ class OrbitalEnv:
 
         self.trail = [tuple(self.ship_pos)]
         self._launch_escaped = False
+        self.checkpoint_particles = []
+        self.glitch_frames = 0
+        self.glitch_active = False
 
         return self._get_state()
 
     def step(self, action):
-        """
-        Executa um passo da simulacao.
-
-        Ordem das operacoes:
-        1. Consome combustivel se acao != 0.
-        2. Calcula aceleracao (gravidade + propulsao).
-        3. Atualiza cinematica (velocidade e posicao).
-        4. Verifica colisoes (planetas, bordas, checkpoints, estacao).
-        5. Verifica combustivel zerado.
-        6. Aplica recompensas continuas.
-
-        Args:
-            action (int): 0=nada, 1=cima, 2=baixo, 3=esquerda, 4=direita.
-
-        Returns:
-            tuple: (observation, reward, done, info)
-        """
         if self.done:
             return self._get_state(), 0.0, True, self.last_info
 
         reward = 0.0
         info = {"status": "alive", "checkpoint_collected": False}
 
-        # --- 1. Consumo de combustivel ---
         thrust_available = False
         if action != 0 and self.fuel >= cfg.FUEL_COST_PER_THRUST:
             self.fuel -= cfg.FUEL_COST_PER_THRUST
             thrust_available = True
 
-        # --- 2. Calculo da aceleracao ---
         if self._launch_escaped:
             active_planets = self.planets
         else:
@@ -155,17 +208,14 @@ class OrbitalEnv:
 
         total_accel = grav_accel + thrust_accel
 
-        # --- 3. Atualizacao cinematica ---
         self.ship_pos, self.ship_vel = phys.apply_kinematics(
             self.ship_pos, self.ship_vel, total_accel, cfg.MAX_SPEED
         )
 
-        # --- 4. Atualiza rastro ---
         self.trail.append(tuple(self.ship_pos))
         if len(self.trail) > cfg.MAX_TRAIL_LENGTH:
             self.trail.pop(0)
 
-        # --- 5. Verifica escape do planeta de lancamento ---
         if not self._launch_escaped:
             launch_planet = self.planets[cfg.LAUNCH_PLANET_INDEX]
             dist_to_launch = float(
@@ -174,7 +224,6 @@ class OrbitalEnv:
             if dist_to_launch > cfg.LAUNCH_ESCAPE_DISTANCE:
                 self._launch_escaped = True
 
-        # --- 6. Verifica colisao com planetas ---
         for i, planet in enumerate(self.planets):
             if not self._launch_escaped and i == cfg.LAUNCH_PLANET_INDEX:
                 continue
@@ -182,6 +231,7 @@ class OrbitalEnv:
                 self.ship_pos, cfg.SHIP_RADIUS,
                 planet["pos"], planet["radius"],
             ):
+                self._trigger_glitch()
                 reward = cfg.REWARD_FAILURE
                 self.done = True
                 info["status"] = "crashed_planet"
@@ -190,10 +240,10 @@ class OrbitalEnv:
                 self.episode_reward += reward
                 return self._get_state(), reward, True, info
 
-        # --- 7. Verifica saida dos limites da tela ---
         if phys.is_out_of_bounds(
             self.ship_pos, cfg.SCREEN_WIDTH, cfg.SCREEN_HEIGHT
         ):
+            self._trigger_glitch()
             reward = cfg.REWARD_FAILURE
             self.done = True
             info["status"] = "out_of_bounds"
@@ -201,7 +251,6 @@ class OrbitalEnv:
             self.episode_reward += reward
             return self._get_state(), reward, True, info
 
-        # --- 8. Verifica colisao com checkpoints ---
         for cp in self.checkpoints:
             if cp["collected"]:
                 continue
@@ -213,8 +262,10 @@ class OrbitalEnv:
                 self.fuel = min(self.fuel + cfg.FUEL_PICKUP, cfg.MAX_FUEL)
                 reward += cfg.REWARD_CHECKPOINT
                 info["checkpoint_collected"] = True
+                self._spawn_checkpoint_burst((
+                    float(cp["pos"][0]), float(cp["pos"][1])
+                ))
 
-        # --- 9. Verifica colisao com a estacao ---
         station_center = (
             float(self.station_pos[0]),
             float(self.station_pos[1]),
@@ -230,7 +281,6 @@ class OrbitalEnv:
             self.episode_reward += reward
             return self._get_state(), reward, True, info
 
-        # --- 10. Verifica combustivel zerado ---
         if self.fuel <= 0.0:
             reward = cfg.REWARD_FAILURE
             self.done = True
@@ -239,7 +289,6 @@ class OrbitalEnv:
             self.episode_reward += reward
             return self._get_state(), reward, True, info
 
-        # --- 11. Recompensas continuas ---
         reward += cfg.REWARD_STEP
         if action != 0:
             reward += cfg.REWARD_THRUST_COST
@@ -250,76 +299,71 @@ class OrbitalEnv:
 
         return self._get_state(), reward, self.done, info
 
-    # ================================================================
-    # Observacao
-    # ================================================================
-
     def _get_state(self):
-        """
-        Constroi o vetor de observacao com 7 elementos normalizados.
-
-        Returns:
-            np.ndarray: [pos_x, pos_y, vel_x, vel_y, fuel, dist_checkpoint, dist_station]
-        """
-        # Distancia ao primeiro checkpoint nao coletado
         checkpoint_dist = 0.0
         for cp in self.checkpoints:
             if not cp["collected"]:
                 checkpoint_dist = float(np.linalg.norm(self.ship_pos - cp["pos"]))
                 break
-
         station_dist = float(np.linalg.norm(self.ship_pos - self.station_pos))
-
         return np.array([
-            float(self.ship_pos[0]),
-            float(self.ship_pos[1]),
-            float(self.ship_vel[0]),
-            float(self.ship_vel[1]),
-            float(self.fuel),
-            checkpoint_dist,
-            station_dist,
+            float(self.ship_pos[0]), float(self.ship_pos[1]),
+            float(self.ship_vel[0]), float(self.ship_vel[1]),
+            float(self.fuel), checkpoint_dist, station_dist,
         ], dtype=np.float64)
 
-    # ================================================================
     # Renderizacao
-    # ================================================================
-
     def render(self):
-        """Renderiza o estado atual do ambiente na janela pygame."""
-        if self.screen is None:
+        if self.canvas is None:
             self._init_pygame()
 
-        self.screen.fill(cfg.COLOR_BG)
+        glitch_offset = 0
+        if self.glitch_active and self.glitch_frames > 0:
+            glitch_offset = random.randint(
+                -cfg.GLITCH_OFFSET_MAX, cfg.GLITCH_OFFSET_MAX
+            )
+            self.glitch_frames -= 1
+            if self.glitch_frames <= 0:
+                self.glitch_active = False
 
+        self.canvas.fill(cfg.COLOR_SPACE)
+
+        self._draw_grid()
+        self._draw_starfield()
         self._draw_trail()
         self._draw_planets()
         self._draw_checkpoints()
         self._draw_station()
-        self._draw_ship()
         self._draw_launch_indicator()
+        self._update_particles()
+        self._draw_particles()
+        self._draw_ship()
         self._draw_hud()
 
         if self.done:
             self._draw_status_overlay()
 
+        if glitch_offset != 0:
+            temp = self.canvas.copy()
+            self.canvas.fill(cfg.COLOR_SPACE)
+            self.canvas.blit(temp, (glitch_offset, 0))
+
+        scaled = pygame.transform.scale(
+            self.canvas, (cfg.SCREEN_WIDTH, cfg.SCREEN_HEIGHT)
+        )
+        self.screen.blit(scaled, (0, 0))
         pygame.display.flip()
         self.clock.tick(cfg.FPS)
 
     def close(self):
-        """Fecha a janela pygame e libera recursos."""
         if self.screen is not None:
             pygame.quit()
             self.screen = None
+            self.canvas = None
             self.clock = None
-            self._font = None
-            self._small_font = None
 
-    # ================================================================
-    # Inicializacao do Pygame
-    # ================================================================
-
+    # Inicializacao Pygame
     def _init_pygame(self):
-        """Inicializa pygame e cria a janela (chamado sob demanda)."""
         if self.screen is not None:
             return
         pygame.init()
@@ -327,145 +371,303 @@ class OrbitalEnv:
             (cfg.SCREEN_WIDTH, cfg.SCREEN_HEIGHT)
         )
         pygame.display.set_caption("Odisseia Orbital")
+        self.canvas = pygame.Surface(
+            (cfg.RENDER_WIDTH, cfg.RENDER_HEIGHT)
+        )
         self.clock = pygame.time.Clock()
-        self._font = pygame.font.Font(None, 28)
-        self._small_font = pygame.font.Font(None, 18)
+        self._generate_stars()
 
-    # ================================================================
-    # Desenho dos Elementos
-    # ================================================================
+    # Plano de fundo
+    def _generate_stars(self):
+        self.stars = []
+        for _ in range(cfg.STAR_COUNT):
+            self.stars.append({
+                "x": random.randint(0, cfg.RENDER_WIDTH - 1),
+                "y": random.randint(0, cfg.RENDER_HEIGHT - 1),
+                "color": random.choice([
+                    cfg.COLOR_GRAY, cfg.COLOR_WHITE, cfg.COLOR_YELLOW,
+                    cfg.COLOR_CYAN,
+                ]),
+                "phase": random.randint(0, 120),
+                "period": random.randint(40, 100),
+            })
 
+    def _draw_grid(self):
+        for x in range(0, cfg.RENDER_WIDTH, cfg.GRID_SPACING):
+            for y in range(0, cfg.RENDER_HEIGHT, cfg.GRID_DOT_GAP):
+                if (y // cfg.GRID_DOT_GAP) % 2 == 0:
+                    if 0 <= x < cfg.RENDER_WIDTH and y < cfg.RENDER_HEIGHT:
+                        self.canvas.set_at((x, y), cfg.COLOR_DARK_GRAY)
+        for y in range(0, cfg.RENDER_HEIGHT, cfg.GRID_SPACING):
+            for x in range(0, cfg.RENDER_WIDTH, cfg.GRID_DOT_GAP):
+                if (x // cfg.GRID_DOT_GAP) % 2 == 0:
+                    if x < cfg.RENDER_WIDTH and 0 <= y < cfg.RENDER_HEIGHT:
+                        self.canvas.set_at((x, y), cfg.COLOR_DARK_GRAY)
+
+    def _draw_starfield(self):
+        current_time = pygame.time.get_ticks()
+        for star in self.stars:
+            frame = (current_time // 16) % star["period"]
+            visible = frame < star["period"] * 0.7 or (
+                frame >= star["period"] * 0.85 and star["phase"] % 3 == 0
+            )
+            if visible:
+                sx = star["x"]
+                sy = star["y"]
+                if 0 <= sx < cfg.RENDER_WIDTH and 0 <= sy < cfg.RENDER_HEIGHT:
+                    self.canvas.set_at((sx, sy), star["color"])
+
+    # Rastro do foguete
     def _draw_trail(self):
-        """Desenha o rastro orbital (trilha) conectando os ultimos pontos."""
-        if len(self.trail) < 2:
-            return
+        trail_spacing = 3
+        for idx in range(0, len(self.trail), trail_spacing):
+            p = self.trail[idx]
+            rx = int(p[0] * cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH)
+            ry = int(p[1] * cfg.RENDER_HEIGHT / cfg.SCREEN_HEIGHT)
+            if 2 <= rx < cfg.RENDER_WIDTH - 2 and 2 <= ry < cfg.RENDER_HEIGHT - 2:
+                pygame.draw.rect(self.canvas, cfg.COLOR_CYAN,
+                                 (rx - 1, ry - 1, 3, 3))
 
-        total = len(self.trail)
-        for i in range(total - 1):
-            p1 = self.trail[i]
-            p2 = self.trail[i + 1]
-
-            # Degrade do inicio (transparente) ao fim (opaco)
-            progress = i / max(total - 1, 1)
-            intensity = int(50 + progress * 180)
-            base = cfg.COLOR_TRAIL
-            r = min(255, base[0] + intensity // 6)
-            g = min(255, base[1] + intensity // 6)
-            b = min(255, base[2] + intensity // 6)
-
-            pygame.draw.line(self.screen, (r, g, b), p1, p2, width=2)
-
+    # Planetas
     def _draw_planets(self):
-        """Desenha todos os planetas. O planeta de lancamento e desenhado como arco."""
         for i, planet in enumerate(self.planets):
-            px = int(planet["pos"][0])
-            py = int(planet["pos"][1])
-            radius = planet["radius"]
+            scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
+            px = int(planet["pos"][0] * scale)
+            py = int(planet["pos"][1] * scale)
+            radius = int(planet["radius"] * scale)
+            color = planet["color"]
 
             if i == cfg.LAUNCH_PLANET_INDEX:
-                self._draw_launch_arc(planet, px, py, radius)
+                self._draw_launch_planet(px, py, radius, color)
                 continue
 
-            pygame.draw.circle(
-                self.screen, planet["color"], (px, py), radius,
-            )
+            if i == 1:
+                self._draw_giant(px, py, radius, color)
+            elif i == 2:
+                self._draw_crystal(px, py, radius, color)
+            elif i in (3, 5):
+                self._draw_gas(px, py, radius, color, i)
+            elif i == 4:
+                self._draw_rocky(px, py, radius, color)
 
-            border_color = tuple(max(0, c - 40) for c in planet["color"])
-            pygame.draw.circle(
-                self.screen, border_color, (px, py), radius, width=2,
-            )
+            self._draw_circle(self.canvas, px, py, radius, color)
+            self._draw_circle(self.canvas, px, py, radius, cfg.COLOR_BLACK, 2)
 
-            highlight_radius = max(4, radius // 3)
-            highlight_x = px - radius // 3
-            highlight_y = py - radius // 3
-            lighter = tuple(min(255, c + 80) for c in planet["color"])
-            pygame.draw.circle(
-                self.screen, lighter,
-                (highlight_x, highlight_y),
-                highlight_radius,
-            )
+    def _draw_circle(self, surf, cx, cy, r, color, width=0):
+        pygame.draw.circle(surf, color, (cx, cy), r, width)
 
+    def _draw_giant(self, px, py, radius, color):
+        for y in range(py - radius, py + radius + 1):
+            dx = int(math.sqrt(max(0, radius * radius - (y - py) * (y - py))))
+            if dx > 0:
+                for x in range(px - dx, px + dx + 1):
+                    shade = (x + y) % 5
+                    if shade == 0:
+                        c = tuple(min(255, v + 30) for v in color)
+                        self.canvas.set_at((x, y), c)
+
+        ring_r = radius + 5
+        pygame.draw.circle(self.canvas, cfg.COLOR_CYAN, (px, py), ring_r, 2)
+        pygame.draw.circle(self.canvas, cfg.COLOR_MAGENTA, (px, py), ring_r + 5, 1)
+
+        storm_x = px + radius // 3
+        storm_y = py - radius // 3
+        storm_w = max(4, radius // 3)
+        storm_h = max(2, radius // 5)
+        pygame.draw.ellipse(self.canvas, cfg.COLOR_ORANGE,
+                            (storm_x - storm_w, storm_y - storm_h,
+                             storm_w * 2, storm_h * 2), 1)
+
+    def _draw_crystal(self, px, py, radius, color):
+        sides = 6
+        pts = []
+        for j in range(sides):
+            angle = j * (2 * math.pi / sides) - math.pi / 2
+            pts.append((
+                int(px + radius * math.cos(angle)),
+                int(py + radius * math.sin(angle)),
+            ))
+        if len(pts) >= 3:
+            pygame.draw.polygon(self.canvas, color, pts)
+            pygame.draw.polygon(self.canvas, cfg.COLOR_BLACK, pts, 2)
+
+        for j in range(3):
+            pygame.draw.line(self.canvas, cfg.COLOR_WHITE,
+                             pts[j], pts[j + 3], 1)
+
+        flash = (pygame.time.get_ticks() // 200) % 2
+        if flash:
+            brighter = tuple(min(255, v + 60) for v in color)
+            pygame.draw.circle(self.canvas, brighter, (px, py), max(2, radius // 3))
+
+    def _draw_gas(self, px, py, radius, color, planet_idx):
+        band_count = 5
+        band_h = radius * 2 // band_count
+        lighter = tuple(min(255, v + 40) for v in color)
+        darker = tuple(max(0, v - 40) for v in color)
+
+        for band in range(band_count):
+            by = py - radius + band * band_h
+            for y in range(by, by + band_h + 1):
+                dx = int(math.sqrt(max(0, radius * radius - (y - py) * (y - py))))
+                band_color = lighter if band % 2 == 0 else darker
+                for x in range(px - dx, px + dx + 1):
+                    self.canvas.set_at((x, y), band_color)
+
+        if planet_idx == 3:
+            spot_x = px + radius // 4
+            spot_y = py - radius // 4
+            spot_r = max(3, radius // 4)
+            pygame.draw.ellipse(self.canvas, cfg.COLOR_CYAN,
+                                (spot_x - spot_r, spot_y - spot_r // 2,
+                                 spot_r * 2, spot_r), 1)
+        else:
+            cur_x = px - radius // 2
+            cur_y = py
+            for _ in range(4):
+                pygame.draw.circle(self.canvas, cfg.COLOR_BROWN,
+                                   (cur_x, cur_y), max(2, radius // 5), 1)
+                cur_x += radius // 3
+                cur_y += random.choice([-1, 1]) * radius // 4
+
+    def _draw_rocky(self, px, py, radius, color):
+        for y in range(py - radius, py + radius + 1):
+            dx = int(math.sqrt(max(0, radius * radius - (y - py) * (y - py))))
+            if dx > 0:
+                for x in range(px - dx, px + dx + 1):
+                    rng = abs(x - px) + abs(y - py)
+                    if rng % 7 < 3:
+                        c = tuple(max(0, v - 25) for v in color)
+                        self.canvas.set_at((x, y), c)
+
+        craters = [
+            (px - radius // 3, py - radius // 4, radius // 4),
+            (px + radius // 3, py - radius // 4, radius // 5),
+            (px + radius // 4, py + radius // 3, radius // 5),
+            (px - radius // 4, py + radius // 4, radius // 6),
+        ]
+        for cx, cy, cr in craters:
+            pygame.draw.circle(self.canvas, cfg.COLOR_BROWN, (cx, cy), cr)
+            pygame.draw.circle(self.canvas, tuple(min(255, v + 50) for v in color),
+                               (cx, cy), cr, 1)
+
+        wx = px - radius // 3
+        wy = py - radius // 3
+        pygame.draw.rect(self.canvas, cfg.COLOR_WHITE,
+                         (wx - 2, wy - 2, 4, 4))
+
+    def _draw_launch_planet(self, px, py, radius, color):
+        start_angle = -math.pi / 3
+        end_angle = math.pi / 3
+        num_points = 16
+        pts = [(px, py)]
+        for j in range(num_points + 1):
+            angle = start_angle + (end_angle - start_angle) * j / num_points
+            pts.append((
+                int(px + radius * math.cos(angle)),
+                int(py + radius * math.sin(angle)),
+            ))
+        pygame.draw.polygon(self.canvas, color, pts)
+
+        self._draw_circle(self.canvas, px, py, radius, cfg.COLOR_BLACK, 2)
+
+        plat_x = px + radius - 6
+        plat_y = py - 8
+        pygame.draw.rect(self.canvas, cfg.COLOR_GRAY,
+                         (plat_x, plat_y, 6, 8))
+        pygame.draw.rect(self.canvas, cfg.COLOR_WHITE,
+                         (plat_x, plat_y, 6, 8), 1)
+        pygame.draw.rect(self.canvas, cfg.COLOR_CYAN,
+                         (plat_x + 2, plat_y + 2, 2, 2))
+
+    # Checkpoints
     def _draw_checkpoints(self):
-        """Desenha checkpoints nao coletados com efeito pulsante."""
         current_time = pygame.time.get_ticks()
+        scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
+        pulse = (current_time // 200) % 2
+
         for cp in self.checkpoints:
             if cp["collected"]:
                 continue
 
-            cx = int(cp["pos"][0])
-            cy = int(cp["pos"][1])
-            radius = cp["radius"]
+            cx = int(cp["pos"][0] * scale)
+            cy = int(cp["pos"][1] * scale)
+            size = int(cp["radius"] * scale * 0.7)
 
-            # Efeito pulsante via senoide
-            pulse = (math.sin(current_time * 0.004) + 1.0) * 0.5
-            color = self._lerp_color(
-                cfg.COLOR_CHECKPOINT_GLOW, cfg.COLOR_CHECKPOINT, pulse
-            )
+            cp_color = cfg.COLOR_YELLOW if pulse else cfg.COLOR_GOLD
+            dark = cfg.COLOR_BLACK
 
-            # Nucleo
-            pygame.draw.circle(self.screen, color, (cx, cy), radius)
+            diamond = [
+                (cx, cy - size),
+                (cx + size, cy),
+                (cx, cy + size),
+                (cx - size, cy),
+            ]
+            pygame.draw.polygon(self.canvas, cp_color, diamond)
+            pygame.draw.polygon(self.canvas, dark, diamond, 1)
 
-            # Aureola externa
-            aura_radius = radius + 4 + int(pulse * 3)
-            aura_color = (color[0], color[1], color[2], 50)
-            aura_surf = pygame.Surface(
-                (aura_radius * 2, aura_radius * 2), pygame.SRCALPHA
-            )
-            pygame.draw.circle(
-                aura_surf, aura_color,
-                (aura_radius, aura_radius), aura_radius,
-            )
-            self.screen.blit(aura_surf, (cx - aura_radius, cy - aura_radius))
+            inner_s = max(2, size // 2)
+            inner = [
+                (cx, cy - inner_s),
+                (cx + inner_s, cy),
+                (cx, cy + inner_s),
+                (cx - inner_s, cy),
+            ]
+            pygame.draw.polygon(self.canvas, dark, inner)
 
-            # Cruz interna (icone de cristal/coleta)
-            inner = max(3, radius // 3)
-            offset = max(2, radius // 4)
-            pygame.draw.line(
-                self.screen, cfg.COLOR_BG,
-                (cx - inner, cy), (cx + inner, cy), width=1,
-            )
-            pygame.draw.line(
-                self.screen, cfg.COLOR_BG,
-                (cx, cy - inner), (cx, cy + inner), width=1,
-            )
-
+    # Estacao final
     def _draw_station(self):
-        """Desenha a estacao espacial como um retangulo com detalhes."""
-        sx = int(self.station_pos[0])
-        sy = int(self.station_pos[1])
-        hw = cfg.STATION_WIDTH // 2
-        hh = cfg.STATION_HEIGHT // 2
+        scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
+        sx = int(self.station_pos[0] * scale)
+        sy = int(self.station_pos[1] * scale)
+        hw = int(cfg.STATION_WIDTH * scale) // 2
+        hh = int(cfg.STATION_HEIGHT * scale) // 2
+        current_time = pygame.time.get_ticks()
 
-        rect = pygame.Rect(sx - hw, sy - hh, cfg.STATION_WIDTH, cfg.STATION_HEIGHT)
+        if self.ship_pos is not None:
+            dist = float(np.linalg.norm(self.ship_pos - self.station_pos))
+            if dist < 150:
+                sxs = int(self.ship_pos[0] * scale)
+                sys = int(self.ship_pos[1] * scale)
+                dx = sx - sxs
+                dy = sy - sys
+                steps = int(dist / 8)
+                for d in range(steps):
+                    t = d / max(steps, 1)
+                    if d % 2 == 0:
+                        px = int(sxs + dx * t)
+                        py = int(sys + dy * t)
+                        if 0 <= px < cfg.RENDER_WIDTH and 0 <= py < cfg.RENDER_HEIGHT:
+                            self.canvas.set_at((px, py), cfg.COLOR_CYAN)
 
-        # Corpo da estacao
-        pygame.draw.rect(self.screen, cfg.COLOR_STATION, rect)
-        pygame.draw.rect(self.screen, cfg.COLOR_STATION_BORDER, rect, width=2)
+        body_rect = pygame.Rect(sx - hw, sy - hh, hw * 2, hh * 2)
+        pygame.draw.rect(self.canvas, cfg.COLOR_GRAY, body_rect)
+        pygame.draw.rect(self.canvas, cfg.COLOR_BLACK, body_rect, 2)
+        pygame.draw.rect(self.canvas, cfg.COLOR_CYAN, body_rect, 1)
 
-        # Painéis solares (detalhes visuais)
-        panel_w, panel_h = 8, 14
-        # Painel esquerdo
-        pygame.draw.rect(
-            self.screen, (52, 73, 94),
-            (sx - hw - panel_w - 4, sy - panel_h // 2, panel_w, panel_h),
-        )
-        # Painel direito
-        pygame.draw.rect(
-            self.screen, (52, 73, 94),
-            (sx + hw + 4, sy - panel_h // 2, panel_w, panel_h),
-        )
+        panel_w = 5
+        panel_h = 10
+        for side in [-1, 1]:
+            panel_x = sx + side * (hw + panel_w + 3)
+            panel_y = sy - panel_h // 2
+            panel_rect = pygame.Rect(panel_x - panel_w // 2, panel_y, panel_w, panel_h)
+            pygame.draw.rect(self.canvas, cfg.COLOR_DARK_GRAY, panel_rect)
+            pygame.draw.rect(self.canvas, cfg.COLOR_CYAN, panel_rect, 1)
+            for gy in range(panel_y + 2, panel_y + panel_h - 1, 2):
+                pygame.draw.line(self.canvas, cfg.COLOR_GRAY,
+                                 (panel_x - panel_w // 2 + 1, gy),
+                                 (panel_x + panel_w // 2 - 1, gy), 1)
 
-        # Luz de atracagem (piscante)
-        dock_light_on = (pygame.time.get_ticks() % 1000) < 600
-        dock_color = (46, 204, 113) if dock_light_on else (39, 174, 96)
-        pygame.draw.circle(self.screen, dock_color, (sx, sy), 4)
+        dock_on = (current_time // 300) % 2
+        dock_color = cfg.COLOR_GREEN if dock_on else cfg.COLOR_DARK_GRAY
+        pygame.draw.rect(self.canvas, dock_color, (sx - 2, sy - 2, 5, 5))
+        pygame.draw.rect(self.canvas, cfg.COLOR_BLACK, (sx - 3, sy - 3, 7, 7), 1)
 
+    # Nave espacial
     def _draw_ship(self):
-        """
-        Desenha a nave como um triangulo orientado na direcao da velocidade.
-        Se a velocidade for quase nula, a nave aponta para a direita.
-        """
-        x, y = float(self.ship_pos[0]), float(self.ship_pos[1])
+        scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
+        x = self.ship_pos[0] * scale
+        y = self.ship_pos[1] * scale
         vx, vy = float(self.ship_vel[0]), float(self.ship_vel[1])
 
         speed = math.hypot(vx, vy)
@@ -474,220 +676,325 @@ class OrbitalEnv:
         else:
             angle = 0.0
 
-        size = 10
+        size = 7
+
         nose = (
             x + size * math.cos(angle),
             y + size * math.sin(angle),
         )
-        left_wing = (
+        left = (
             x + size * 0.5 * math.cos(angle + 2.6),
             y + size * 0.5 * math.sin(angle + 2.6),
         )
-        right_wing = (
+        right = (
             x + size * 0.5 * math.cos(angle - 2.6),
             y + size * 0.5 * math.sin(angle - 2.6),
         )
-
-        pygame.draw.polygon(
-            self.screen, cfg.COLOR_SHIP,
-            [nose, left_wing, right_wing],
-        )
-        pygame.draw.polygon(
-            self.screen, cfg.COLOR_SHIP_OUTLINE,
-            [nose, left_wing, right_wing], width=1,
+        rear = (
+            x + size * 0.25 * math.cos(angle + math.pi),
+            y + size * 0.25 * math.sin(angle + math.pi),
         )
 
-        # Pequeno circulo no centro da nave
-        pygame.draw.circle(self.screen, cfg.COLOR_BG, (int(x), int(y)), 2)
+        pts = [
+            (int(nose[0]), int(nose[1])),
+            (int(left[0]), int(left[1])),
+            (int(rear[0]), int(rear[1])),
+            (int(right[0]), int(right[1])),
+        ]
+        pygame.draw.polygon(self.canvas, cfg.COLOR_WHITE, pts)
+        pygame.draw.polygon(self.canvas, cfg.COLOR_BLACK, pts, 1)
+        pygame.draw.polygon(self.canvas, cfg.COLOR_CYAN, pts, 1)
 
+        cockpit_x = int(x + size * 0.3 * math.cos(angle))
+        cockpit_y = int(y + size * 0.3 * math.sin(angle))
+        pygame.draw.rect(self.canvas, cfg.COLOR_CYAN,
+                         (cockpit_x - 1, cockpit_y - 1, 3, 3))
+
+    # Particulas (checkpoint burst)
+    def _spawn_checkpoint_burst(self, pos):
+        if self.render_mode is None:
+            return
+        scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
+        cx = pos[0] * scale
+        cy = pos[1] * scale
+        for _ in range(cfg.MAX_CHECKPOINT_PARTICLES):
+            angle = random.uniform(0, math.pi * 2)
+            speed = random.uniform(0.5, 2.5)
+            self.checkpoint_particles.append({
+                "x": cx,
+                "y": cy,
+                "vx": math.cos(angle) * speed,
+                "vy": math.sin(angle) * speed,
+                "life": cfg.CHECKPOINT_PARTICLE_LIFETIME,
+                "max_life": cfg.CHECKPOINT_PARTICLE_LIFETIME,
+                "color": random.choice([
+                    cfg.COLOR_YELLOW, cfg.COLOR_GOLD, cfg.COLOR_WHITE
+                ]),
+            })
+
+    def _update_particles(self):
+        for p in self.checkpoint_particles:
+            p["x"] += p["vx"]
+            p["y"] += p["vy"]
+            p["life"] -= 1
+        self.checkpoint_particles = [
+            p for p in self.checkpoint_particles if p["life"] > 0
+        ]
+
+    def _draw_particles(self):
+        for p in self.checkpoint_particles:
+            t = p["life"] / p["max_life"]
+            px = int(p["x"])
+            py = int(p["y"])
+            if t > 0.2 and 0 <= px < cfg.RENDER_WIDTH and 0 <= py < cfg.RENDER_HEIGHT:
+                self.canvas.set_at((px, py), p["color"])
+
+    # Indicador de Lancamento
     def _draw_launch_indicator(self):
-        """Desenha uma seta indicando o planeta de lancamento."""
-        launch_planet = self.planets[cfg.LAUNCH_PLANET_INDEX]
-        px = int(launch_planet["pos"][0]) + launch_planet["radius"] + 8
-        py = int(launch_planet["pos"][1])
-        label = self._small_font.render("LANCAMENTO", True, cfg.COLOR_HUD_TEXT)
-        label_rect = label.get_rect(
-            midleft=(px, py - launch_planet["radius"] - 6)
-        )
-        self.screen.blit(label, label_rect)
-
-    def _draw_launch_arc(self, planet, px, py, radius):
-        """
-        Desenha o planeta de lancamento como um arco preenchido (setor)
-        no lado direito, simulando um planeta surgindo da borda da tela.
-        """
-        color = planet["color"]
-        num_points = 30
-        start_angle = -math.pi / 3
-        end_angle = math.pi / 3
-
-        points = [(float(px), float(py))]
-        for j in range(num_points + 1):
-            angle = start_angle + (end_angle - start_angle) * j / num_points
-            x = px + radius * math.cos(angle)
-            y = py + radius * math.sin(angle)
-            points.append((x, y))
-
-        pygame.draw.polygon(self.screen, color, points)
-
-        arc_rect = (px - radius, py - radius, radius * 2, radius * 2)
-        border_color = tuple(max(0, c - 40) for c in color)
-        pygame.draw.arc(
-            self.screen, border_color, arc_rect,
-            start_angle, end_angle, width=2,
-        )
-
-        lines_start = self._arc_point(px, py, radius, start_angle)
-        lines_end = self._arc_point(px, py, radius, end_angle)
-        pygame.draw.line(
-            self.screen, border_color, (float(px), float(py)), lines_start, width=2,
-        )
-        pygame.draw.line(
-            self.screen, border_color, (float(px), float(py)), lines_end, width=2,
-        )
-
-        highlight_radius = max(4, radius // 3)
-        highlight_x = px + radius // 2
-        highlight_y = py - radius // 3
-        lighter = tuple(min(255, c + 80) for c in color)
-        pygame.draw.circle(
-            self.screen, lighter,
-            (int(highlight_x), int(highlight_y)),
-            highlight_radius,
-        )
-
-    @staticmethod
-    def _arc_point(cx, cy, radius, angle):
-        """Retorna (x, y) de um ponto na borda do arco, dado o angulo."""
-        return (cx + radius * math.cos(angle), cy + radius * math.sin(angle))
-
-    # ================================================================
-    # HUD
-    # ================================================================
-
-    def _draw_hud(self):
-        """Desenha o HUD: barra de combustivel, recompensa, passos, checkpoints."""
-        if self._font is None:
+        if self._launch_escaped:
             return
 
-        margin_x, margin_y = 15, 15
-        bar_w, bar_h = 200, 16
+        scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
+        lp = self.planets[cfg.LAUNCH_PLANET_INDEX]
+        px = int(lp["pos"][0] * scale) + int(lp["radius"] * scale) + 6
+        py = int(lp["pos"][1] * scale) - int(lp["radius"] * scale) - 10
 
-        # --- Barra de combustivel ---
-        pygame.draw.rect(
-            self.screen, cfg.COLOR_FUEL_BAR_BG,
-            (margin_x, margin_y, bar_w, bar_h),
-        )
+        label = PixelFont.render("LAUNCH", cfg.COLOR_MAGENTA)
+        self.canvas.blit(label, (px, py))
 
-        fuel_ratio = self.fuel / cfg.MAX_FUEL
-        if fuel_ratio > 0:
-            fuel_width = int(bar_w * fuel_ratio)
-            if fuel_ratio > 0.5:
-                fuel_color = cfg.COLOR_FUEL_BAR
-            elif fuel_ratio > 0.25:
-                fuel_color = cfg.COLOR_FUEL_BAR_MID
-            else:
-                fuel_color = cfg.COLOR_FUEL_BAR_LOW
-            pygame.draw.rect(
-                self.screen, fuel_color,
-                (margin_x, margin_y, fuel_width, bar_h),
-            )
+        current_time = pygame.time.get_ticks()
+        arrow_on = (current_time // 250) % 2
+        if arrow_on:
+            for j in range(3):
+                ax = px + j * 4
+                ay = py + 10
+                if 0 <= ax < cfg.RENDER_WIDTH - 4 and 0 <= ay < cfg.RENDER_HEIGHT:
+                    pygame.draw.rect(self.canvas, cfg.COLOR_CYAN,
+                                     (ax, ay, 4, 2))
 
-        pygame.draw.rect(
-            self.screen, cfg.COLOR_HUD_TEXT,
-            (margin_x, margin_y, bar_w, bar_h), width=1,
-        )
+    # HUD — distribuido sem caixa
+    def _draw_hud(self):
+        current_time = pygame.time.get_ticks()
 
-        # --- Textos do HUD ---
-        fuel_text = self._small_font.render(
-            f"Combustivel: {int(self.fuel)} / {int(cfg.MAX_FUEL)}",
-            True, cfg.COLOR_HUD_TEXT,
-        )
-        self.screen.blit(fuel_text, (margin_x, margin_y + bar_h + 4))
+        danger, danger_dist = self._check_danger()
 
-        reward_text = self._small_font.render(
-            f"Recompensa: {self.episode_reward:+.1f}",
-            True, cfg.COLOR_HUD_TEXT,
-        )
-        self.screen.blit(reward_text, (margin_x, margin_y + bar_h + 22))
+        self._draw_hud_top_left(current_time)
+        self._draw_hud_top_right(current_time)
+        self._draw_hud_top_warning(danger, danger_dist, current_time)
+        self._draw_hud_fuel_bar()
+        self._draw_hud_distance()
 
-        steps_text = self._small_font.render(
-            f"Passos: {self.episode_steps}",
-            True, cfg.COLOR_HUD_TEXT,
-        )
-        self.screen.blit(steps_text, (margin_x, margin_y + bar_h + 40))
+    def _check_danger(self):
+        danger = False
+        danger_dist = 999
+        if self.ship_pos is not None and self._launch_escaped:
+            for i, planet in enumerate(self.planets):
+                if i == cfg.LAUNCH_PLANET_INDEX:
+                    continue
+                d = float(np.linalg.norm(self.ship_pos - planet["pos"]))
+                if d < planet["radius"] + 60:
+                    danger = True
+                    danger_dist = min(danger_dist, d - planet["radius"])
+        return danger, danger_dist
 
+    def _blit_text(self, surf, text, x, y, color):
+        rendered = PixelFont.render(text, color)
+        for ox, oy in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            shadow = PixelFont.render(text, cfg.COLOR_BLACK)
+            if 0 <= x + ox < cfg.RENDER_WIDTH and 0 <= y + oy < cfg.RENDER_HEIGHT:
+                self.canvas.blit(shadow, (x + ox, y + oy))
+        self.canvas.blit(rendered, (x, y))
+        return rendered.get_width(), rendered.get_height()
+
+    def _draw_hud_top_left(self, current_time):
+        x, y = 4, 4
+        self._blit_text(self.canvas, f"PTS {self.episode_reward:+.0f}", x, y, cfg.COLOR_CYAN)
+        w, _ = self._blit_text(self.canvas, f"C {self.episode_steps}", x, y + 10, cfg.COLOR_GRAY)
+
+    def _draw_hud_top_right(self, current_time):
         collected = sum(1 for cp in self.checkpoints if cp["collected"])
-        total_cp = len(self.checkpoints)
-        cp_text = self._small_font.render(
-            f"Checkpoints: {collected} / {total_cp}",
-            True, cfg.COLOR_HUD_TEXT,
-        )
-        self.screen.blit(cp_text, (margin_x, margin_y + bar_h + 58))
+        total = len(self.checkpoints)
+        x = cfg.RENDER_WIDTH - 80
+        y = 4
 
-    # ================================================================
-    # Overlay de Status
-    # ================================================================
+        self._blit_text(self.canvas, "CP", x, y, cfg.COLOR_WHITE)
 
+        diamond_size = 3
+        dx = x + 20
+        dy = y + 3
+        for i in range(total):
+            cx = dx + i * 9
+            diamond = [
+                (cx, dy - diamond_size),
+                (cx + diamond_size, dy),
+                (cx, dy + diamond_size),
+                (cx - diamond_size, dy),
+            ]
+            if i < collected:
+                pygame.draw.polygon(self.canvas, cfg.COLOR_YELLOW, diamond)
+                pygame.draw.polygon(self.canvas, cfg.COLOR_BLACK, diamond, 1)
+            else:
+                pygame.draw.polygon(self.canvas, cfg.COLOR_DARK_GRAY, diamond, 1)
+
+    def _draw_hud_top_warning(self, danger, danger_dist, current_time):
+        if not danger:
+            return
+
+        blink = (current_time // 250) % 2
+        if not blink:
+            return
+
+        msg = f"WARNING"
+        rendered = PixelFont.render(msg, cfg.COLOR_RED)
+        x = (cfg.RENDER_WIDTH - rendered.get_width()) // 2
+        y = 4
+        for ox, oy in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            shadow = PixelFont.render(msg, cfg.COLOR_BLACK)
+            self.canvas.blit(shadow, (x + ox, y + oy))
+        self.canvas.blit(rendered, (x, y))
+
+    def _draw_hud_fuel_bar(self):
+        block_count = cfg.HUD_FUEL_BLOCKS
+        block_w = 8
+        block_h = 6
+        gap = 2
+        total_w = block_count * block_w + (block_count - 1) * gap
+        x = 6
+        y = cfg.RENDER_HEIGHT - block_h - 8
+
+        fuel_label = PixelFont.render("FUEL", cfg.COLOR_WHITE)
+        for ox, oy in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            shadow = PixelFont.render("FUEL", cfg.COLOR_BLACK)
+            self.canvas.blit(shadow, (x - 1 + ox, y - 9 + oy))
+        self.canvas.blit(fuel_label, (x, y - 10))
+
+        bx = x + 30
+        fuel_ratio = self.fuel / cfg.MAX_FUEL
+        filled = int(block_count * fuel_ratio)
+        for b in range(block_count):
+            bpx = bx + b * (block_w + gap)
+            bpy = y
+            if b < filled:
+                if b >= 7:
+                    bc = cfg.COLOR_GREEN
+                elif b >= 4:
+                    bc = cfg.COLOR_YELLOW
+                else:
+                    bc = cfg.COLOR_RED
+                pygame.draw.rect(self.canvas, bc, (bpx, bpy, block_w, block_h))
+            pygame.draw.rect(self.canvas, cfg.COLOR_DARK_GRAY,
+                             (bpx, bpy, block_w, block_h), 1)
+
+        fuel_text = PixelFont.render(f"{int(self.fuel)}", cfg.COLOR_WHITE)
+        tx = bx + total_w + 6
+        for ox, oy in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+            shadow = PixelFont.render(f"{int(self.fuel)}", cfg.COLOR_BLACK)
+            self.canvas.blit(shadow, (tx - 1 + ox, y - 1 + oy))
+        self.canvas.blit(fuel_text, (tx, y - 1))
+
+    def _draw_hud_distance(self):
+        if self.ship_pos is None:
+            return
+
+        station_dist = float(np.linalg.norm(self.ship_pos - self.station_pos))
+        dist_pw = 56
+        dist_ph = 56
+        dist_x = cfg.RENDER_WIDTH - dist_pw - 6
+        dist_y = cfg.RENDER_HEIGHT - dist_ph - 6
+
+        pygame.draw.rect(self.canvas, cfg.COLOR_BLACK, (dist_x, dist_y, dist_pw, dist_ph))
+        pygame.draw.rect(self.canvas, cfg.COLOR_CYAN, (dist_x, dist_y, dist_pw, dist_ph), 2)
+
+        dist_label = PixelFont.render("DST", cfg.COLOR_WHITE)
+        self.canvas.blit(dist_label,
+                         (dist_x + (dist_pw - dist_label.get_width()) // 2, dist_y + 4))
+
+        dist_val = PixelFont.render(f"{int(station_dist)}", cfg.COLOR_CYAN)
+        self.canvas.blit(dist_val,
+                         (dist_x + (dist_pw - dist_val.get_width()) // 2, dist_y + 18))
+
+        bar_h = dist_ph - 28
+        bar_x = dist_x + dist_pw // 2 - 2
+        bar_y = dist_y + 24
+        max_dist = math.hypot(cfg.SCREEN_WIDTH, cfg.SCREEN_HEIGHT)
+        dist_ratio = min(1.0, station_dist / max_dist)
+        filled_h = int(bar_h * (1.0 - dist_ratio))
+        pygame.draw.rect(self.canvas, cfg.COLOR_DARK_GRAY,
+                         (bar_x, bar_y, 4, bar_h), 1)
+        if filled_h > 0:
+            bar_color = cfg.COLOR_GREEN if dist_ratio < 0.3 else (
+                cfg.COLOR_YELLOW if dist_ratio < 0.6 else cfg.COLOR_RED
+            )
+            pygame.draw.rect(self.canvas, bar_color,
+                             (bar_x, bar_y + bar_h - filled_h, 4, filled_h))
+
+    # Status Overlay
     def _draw_status_overlay(self):
-        """Exibe overlay translucido com o resultado do episodio."""
         status = self.last_info.get("status", "unknown")
+        current_time = pygame.time.get_ticks()
 
         messages = {
-            "docked": ("SUCESSO! Estacao alcancada!", cfg.COLOR_SUCCESS),
-            "crashed_planet": ("FRACASSO! Colisao com planeta!", cfg.COLOR_FAILURE),
-            "out_of_bounds": ("FRACASSO! Fora dos limites da tela!", cfg.COLOR_FAILURE),
-            "no_fuel": ("FRACASSO! Combustivel esgotado!", cfg.COLOR_FAILURE),
+            "docked": ("MISSION COMPLETE", cfg.COLOR_GREEN),
+            "crashed_planet": ("GAME OVER", cfg.COLOR_RED),
+            "out_of_bounds": ("SIGNAL LOST", cfg.COLOR_RED),
+            "no_fuel": ("NO FUEL", cfg.COLOR_RED),
         }
-        msg, color = messages.get(status, ("Fim do Episodio", cfg.COLOR_HUD_TEXT))
+        msg, color = messages.get(status, ("MISSION END", cfg.COLOR_WHITE))
 
-        # Fundo semi-transparente
-        overlay = pygame.Surface(
-            (cfg.SCREEN_WIDTH, cfg.SCREEN_HEIGHT), pygame.SRCALPHA
+        sub_msgs = {
+            "docked": "STATION REACHED",
+            "crashed_planet": "PLANET COLLISION",
+            "out_of_bounds": "OUT OF ORBIT",
+            "no_fuel": "FUEL DEPLETED",
+        }
+        sub_msg = sub_msgs.get(status, "")
+
+        overlay = pygame.Surface((cfg.RENDER_WIDTH, cfg.RENDER_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        self.canvas.blit(overlay, (0, 0))
+
+        frame_w = 280
+        frame_h = 120
+        frame_x = (cfg.RENDER_WIDTH - frame_w) // 2
+        frame_y = (cfg.RENDER_HEIGHT - frame_h) // 2
+
+        pygame.draw.rect(self.canvas, cfg.COLOR_BLACK,
+                         (frame_x, frame_y, frame_w, frame_h))
+        pygame.draw.rect(self.canvas, color,
+                         (frame_x, frame_y, frame_w, frame_h), 2)
+        pygame.draw.rect(self.canvas, cfg.COLOR_BLACK,
+                         (frame_x + 2, frame_y + 2, frame_w - 4, frame_h - 4), 1)
+
+        glitch_off = 0
+        if status != "docked":
+            glitch_off = random.randint(-1, 1)
+
+        title = PixelFont.render(msg, color)
+        tx = frame_x + (frame_w - title.get_width()) // 2 + glitch_off
+        ty = frame_y + 16
+        self.canvas.blit(title, (tx, ty))
+
+        if sub_msg:
+            sub = PixelFont.render(sub_msg, cfg.COLOR_WHITE)
+            sx2 = frame_x + (frame_w - sub.get_width()) // 2
+            self.canvas.blit(sub, (sx2, ty + 20))
+
+        collected = sum(1 for cp in self.checkpoints if cp["collected"])
+        stats = PixelFont.render(
+            f"PTS:{self.episode_reward:+.0f} C:{self.episode_steps} CP:{collected}/{len(self.checkpoints)}",
+            cfg.COLOR_CYAN,
         )
-        overlay.fill((0, 0, 0, 140))
-        self.screen.blit(overlay, (0, 0))
+        self.canvas.blit(stats,
+                         (frame_x + (frame_w - stats.get_width()) // 2, frame_y + frame_h - 36))
 
-        # Mensagem principal
-        text = self._font.render(msg, True, color)
-        text_rect = text.get_rect(
-            center=(cfg.SCREEN_WIDTH // 2, cfg.SCREEN_HEIGHT // 2 - 20)
-        )
-        self.screen.blit(text, text_rect)
+        blink = (current_time // 500) % 2
+        if blink:
+            hint = PixelFont.render("PRESS [R] TO RETRY", cfg.COLOR_YELLOW)
+            self.canvas.blit(hint,
+                             (frame_x + (frame_w - hint.get_width()) // 2,
+                              frame_y + frame_h - 18))
 
-        # Estatisticas finais
-        stats = self._small_font.render(
-            f"Recompensa final: {self.episode_reward:+.1f}     "
-            f"Passos: {self.episode_steps}     "
-            f"Checkpoints: {sum(1 for cp in self.checkpoints if cp['collected'])}/{len(self.checkpoints)}",
-            True, cfg.COLOR_HUD_TEXT,
-        )
-        stats_rect = stats.get_rect(
-            center=(cfg.SCREEN_WIDTH // 2, cfg.SCREEN_HEIGHT // 2 + 20)
-        )
-        self.screen.blit(stats, stats_rect)
-
-        # Instrucao
-        hint = self._small_font.render(
-            "Pressione [R] para reiniciar  |  [ESC] para sair",
-            True, (180, 180, 180),
-        )
-        hint_rect = hint.get_rect(
-            center=(cfg.SCREEN_WIDTH // 2, cfg.SCREEN_HEIGHT // 2 + 50)
-        )
-        self.screen.blit(hint, hint_rect)
-
-    # ================================================================
-    # Metodos Auxiliares
-    # ================================================================
-
-    @staticmethod
-    def _point_visible(point):
-        """Verifica se um ponto esta dentro da area visivel da tela."""
-        x, y = point
-        return 0 <= x <= cfg.SCREEN_WIDTH and 0 <= y <= cfg.SCREEN_HEIGHT
-
-    @staticmethod
-    def _lerp_color(c1, c2, t):
-        """Interpola linearmente entre duas cores RGB."""
-        return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
+    # Glitch
+    def _trigger_glitch(self):
+        self.glitch_active = True
+        self.glitch_frames = cfg.GLITCH_DURATION
