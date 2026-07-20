@@ -100,6 +100,14 @@ python run_heuristic.py --trained 001      # run específica
 
 # Listar runs de treino salvas
 python run_heuristic.py --list
+
+# Agente de algoritmo genetico (neuroevolucao)
+python run_genetic.py                       # Debug visual com evolucao live
+python run_genetic.py --train               # Treino headless (200 geracoes)
+python run_genetic.py --train --gens 50     # Treino com N geracoes
+python run_genetic.py --show                # Showcase do melhor cerebro
+python run_genetic.py --show --gen 20       # Showcase de geracao especifica
+python run_genetic.py --list                # Listar checkpoints salvos
 ```
 
 Ao executar `run_game.py`, você verá:
@@ -124,25 +132,31 @@ Ao executar `run_game.py`, você verá:
 ```text
 estilingue-espacial/
 ├── run_game.py                  # Atalho: jogar manualmente
-├── run_heuristic.py             # Atalho: agente de busca heurística
-├── requirements.txt             # Dependências do projeto
+├── run_heuristic.py             # Atalho: agente de busca heuristica
+├── run_genetic.py               # Atalho: agente de algoritmo genetico
+├── requirements.txt             # Dependencias do projeto
 ├── README.md                    # Este arquivo
 ├── docs/
 │   └── fotos/                   # Fotos da equipe
 └── game-enviroment/
-    ├── main.py                  # Tela de título + loop de jogo manual
-    ├── orbital_env.py           # Classe OrbitalEnv: lógica, renderização, interface RL
-    ├── physics.py               # Física pura: gravidade, colisões, cinemática
-    ├── config.py                # Constantes: física, cores, layout, recompensas
+    ├── main.py                  # Tela de titulo + loop de jogo manual
+    ├── orbital_env.py           # Classe OrbitalEnv: logica, renderizacao, interface RL
+    ├── physics.py               # Fisica pura: gravidade, colisoes, cinematica
+    ├── config.py                # Constantes: fisica, cores, layout, recompensas
     └── agents/
-        └── heuristic_goal/      # Agente de Busca Heurística (A*)
-            ├── heuristic_agent.py    # Entrada principal do agente
-            ├── grid_map.py           # Grid 40x30 com margem proporcional à massa
-            ├── astar_planner.py      # A* geradora com custo gravitacional
-            ├── auto_pilot.py         # Piloto com velocidade-alvo e evasão
-            ├── visualization.py      # Overlay A*, linha guia e HUD
-            ├── replay_buffer.py      # Save/Load de experiências de sucesso
-            └── training_data/        # Runs de treino salvas (.json)
+        ├── heuristic_goal/      # Agente de Busca Heuristica (A*)
+        │   ├── heuristic_agent.py
+        │   ├── grid_map.py
+        │   ├── astar_planner.py
+        │   ├── auto_pilot.py
+        │   ├── visualization.py
+        │   ├── replay_buffer.py
+        │   └── training_data/
+        └── genetic/             # Agente de Algoritmo Genetico (Neuroevolucao)
+            ├── ship.py              # NaveGenetica + CerebroNave (RNA)
+            ├── genetic_env.py       # AmbienteGenetico: frota de 100 naves
+            ├── treinador.py         # Loop de treino, save/load, logs
+            └── checkpoints/         # Cerebros salvos (.pkl)
 ```
 
 ## 🧠 Ambiente e Agentes

@@ -232,7 +232,7 @@ class OrbitalEnv:
                 planet["pos"], planet["radius"],
             ):
                 self._trigger_glitch()
-                reward = cfg.REWARD_FAILURE
+                reward = cfg.REWARD_FAILURE_COLLISION
                 self.done = True
                 info["status"] = "crashed_planet"
                 info["planet_mass"] = planet["mass"]
@@ -244,7 +244,7 @@ class OrbitalEnv:
             self.ship_pos, cfg.SCREEN_WIDTH, cfg.SCREEN_HEIGHT
         ):
             self._trigger_glitch()
-            reward = cfg.REWARD_FAILURE
+            reward = cfg.REWARD_FAILURE_OOB
             self.done = True
             info["status"] = "out_of_bounds"
             self.last_info = info
@@ -274,7 +274,7 @@ class OrbitalEnv:
             self.ship_pos, cfg.SHIP_RADIUS,
             station_center, cfg.STATION_WIDTH, cfg.STATION_HEIGHT,
         ):
-            reward += cfg.REWARD_SUCCESS
+            reward += cfg.REWARD_SUCCESS + self.fuel * cfg.REWARD_FUEL_BONUS_FACTOR
             self.done = True
             info["status"] = "docked"
             self.last_info = info
@@ -282,7 +282,7 @@ class OrbitalEnv:
             return self._get_state(), reward, True, info
 
         if self.fuel <= 0.0:
-            reward = cfg.REWARD_FAILURE
+            reward = cfg.REWARD_FAILURE_NO_FUEL
             self.done = True
             info["status"] = "no_fuel"
             self.last_info = info
