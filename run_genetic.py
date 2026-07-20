@@ -1,0 +1,210 @@
+import sys
+import os
+
+_project_dir = os.path.dirname(os.path.abspath(__file__))
+_game_env = os.path.join(_project_dir, "game-enviroment")
+if _game_env not in sys.path:
+    sys.path.insert(0, _game_env)
+
+import pygame
+from agents.genetic.genetic_env import AmbienteGenetico
+from agents.genetic.treinador import TreinadorGenetico
+
+MAX_STEPS = 2000
+AUTO_RESET_FRAMES = 90
+
+
+def modo_debug():
+    pop_size = 200
+    env = AmbienteGenetico(pop_size=pop_size, render_mode="human")
+
+    running = True
+    dead_frames = 0
+    fitness_done = False
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                elif event.key == pygame.K_r:
+                    if env.total_alive == 0:
+                        dead_frames = AUTO_RESET_FRAMES
+                    else:
+                        env.reset()
+                        env.generation = 1
+                        fitness_done = False
+
+        if env.total_alive == 0:
+            if not fitness_done:
+                env.calcular_fitness_frota()
+                top = sorted(env.frota, key=lambda n: n.fitness, reverse=True)[:3]
+                print("Geracao {} | {} steps | top3: {}".format(
+                    env.generation, env.episode_steps,
+                    [round(n.fitness) for n in top]))
+                fitness_done = True
+
+            env.render()
+
+            dead_frames += 1
+            if dead_frames >= AUTO_RESET_FRAMES:
+                env.evoluir_geracao()
+                env.reset()
+                dead_frames = 0
+                fitness_done = False
+            continue
+
+        actions = []
+        for nave in env.frota:
+            if nave.ativa:
+                sensores = env.obter_sensores_nave(nave)
+                acao = nave.cerebro.prever_acao(sensores)
+                actions.append(acao)
+            else:
+                actions.append(0)
+
+        env.step(actions)
+        env.render()
+
+    env.close()
+
+
+def modo_treino(pop_size, geracoes, showcase=False):
+    print("=" * 60)
+    print("ODISSEIA ORBITAL — Treinamento Genetico")
+    print("=" * 60)
+    print("Populacao: {} naves".format(pop_size))
+    print("Geracoes:  {}".format(geracoes))
+    if showcase:
+        print("Showcase:  habilitado (gens 1, 20, 40, ..., {})".format(geracoes))
+    print()
+
+    treinador = TreinadorGenetico(pop_size=pop_size)
+    treinador.treinar(geracoes=geracoes, max_steps=2000,
+                      taxa_mutacao=0.06, forca_mutacao=0.15, decay_forca=0.9992,
+                      showcase=showcase)
+
+
+def modo_show(gen_id):
+    data = TreinadorGenetico.carregar(gen_id)
+    if data is None:
+        print("Checkpoint nao encontrado. Execute --train primeiro.")
+        return
+
+    env = AmbienteGenetico(pop_size=1, render_mode="human")
+    env.generation = data["generation"]
+    env.frota[0].cerebro.definir_cromossomo(data["cromossomo"])
+
+    generation = data["generation"]
+    hist_fitness = data["fitness"]
+
+    running = True
+    done = False
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                elif event.key == pygame.K_r:
+                    env.reset()
+                    env.frota[0].cerebro.definir_cromossomo(data["cromossomo"])
+                    done = False
+
+        if env.total_alive == 1 and not done:
+            if env.episode_steps >= MAX_STEPS:
+                for n in env.frota:
+                    if n.ativa:
+                        n.ativa = False
+                        n.status = "alive"
+                        env.total_alive = 0
+                done = True
+
+            if not done:
+                nave = env.frota[0]
+                sensores = env.obter_sensores_nave(nave)
+                acao = nave.cerebro.prever_acao(sensores)
+                env.step([acao])
+                env.render()
+            continue
+
+        if not done:
+            nave = env.frota[0]
+            status = nave.status
+            print("Showcase gen {} | status={} | steps={} | cp={} | fuel={:.0f}".format(
+                generation, status, nave.steps_alive,
+                nave.checkpoints_coletados, nave.fuel))
+            done = True
+
+        env.render()
+
+    env.close()
+
+
+def modo_listar():
+    cps = TreinadorGenetico.listar()
+    if cps:
+        print("Checkpoints salvos:")
+        for c in cps:
+            status = "DOCADO" if c["docked"] else "---"
+            print("  {}  gen {:3d}  fit={:.0f}  cp={}  {}".format(
+                c["file"], c["generation"], c["fitness"],
+                c["checkpoints"], status))
+    else:
+        print("Nenhum checkpoint salvo. Execute com --train primeiro.")
+
+
+def print_help():
+    print("Uso: python run_genetic.py [modo] [opcoes]")
+    print()
+    print("Modos:")
+    print("  (sem argumentos)    Debug visual com evolucao live")
+    print("  --train             Treino headless (200 geracoes)")
+    print("  --train --showcase  Treino com showcases visuais")
+    print("  --train --gens N    Treino com N geracoes")
+    print("  --train --pop N     Treino com N naves")
+    print("  --show              Showcase do melhor cerebro (best.pkl)")
+    print("  --show --gen N      Showcase de uma geracao especifica")
+    print("  --list              Listar checkpoints salvos")
+
+
+def main():
+    args = sys.argv[1:]
+
+    if "--help" in args or "-h" in args:
+        print_help()
+        return
+
+    if "--train" in args:
+        pop_size = 200
+        geracoes = 500
+        showcase = "--showcase" in args
+        for i, arg in enumerate(args):
+            if arg == "--gens" and i + 1 < len(args):
+                geracoes = int(args[i + 1])
+            elif arg == "--pop" and i + 1 < len(args):
+                pop_size = int(args[i + 1])
+        modo_treino(pop_size, geracoes, showcase)
+        return
+
+    if "--show" in args:
+        gen_id = None
+        for i, arg in enumerate(args):
+            if arg == "--gen" and i + 1 < len(args):
+                gen_id = args[i + 1]
+        modo_show(gen_id)
+        return
+
+    if "--list" in args:
+        modo_listar()
+        return
+
+    modo_debug()
+
+
+if __name__ == "__main__":
+    main()

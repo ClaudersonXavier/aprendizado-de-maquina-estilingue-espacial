@@ -34,11 +34,14 @@ LAUNCH_ESCAPE_DISTANCE = 90
 # ============================================================
 # Sistema de Recompensas
 # ============================================================
-REWARD_STEP = -0.01
-REWARD_THRUST_COST = -0.05
-REWARD_CHECKPOINT = 100.0
-REWARD_SUCCESS = 1000.0
-REWARD_FAILURE = -1000.0
+REWARD_STEP = -0.005
+REWARD_THRUST_COST = -3.0
+REWARD_CHECKPOINT = 500.0
+REWARD_SUCCESS = 8000.0
+REWARD_FUEL_BONUS_FACTOR = 5.0
+REWARD_FAILURE_COLLISION = -1000.0
+REWARD_FAILURE_OOB = -1000.0
+REWARD_FAILURE_NO_FUEL = -750.0
 
 # ============================================================
 # Paleta Pixel Art — 16 cores estilo console 16-bit
