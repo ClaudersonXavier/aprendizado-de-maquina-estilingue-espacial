@@ -191,6 +191,7 @@ class OrbitalEnv:
         if action != 0 and self.fuel >= cfg.FUEL_COST_PER_THRUST:
             self.fuel -= cfg.FUEL_COST_PER_THRUST
             thrust_available = True
+            reward += cfg.REWARD_THRUST_COST
 
         if self._launch_escaped:
             active_planets = self.planets
@@ -290,8 +291,6 @@ class OrbitalEnv:
             return self._get_state(), reward, True, info
 
         reward += cfg.REWARD_STEP
-        if action != 0:
-            reward += cfg.REWARD_THRUST_COST
 
         self.episode_reward += reward
         self.episode_steps += 1
