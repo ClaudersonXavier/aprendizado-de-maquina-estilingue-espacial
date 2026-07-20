@@ -167,13 +167,13 @@ O estado do ambiente é representado por um vetor numpy de **7 elementos** com v
 
 | Índice | Símbolo | Descrição | Intervalo típico |
 |---|---|---|---|
-| 0 | `pos_x` | Posição horizontal da nave | 0 a 800 |
-| 1 | `pos_y` | Posição vertical da nave | 0 a 600 |
-| 2 | `vel_x` | Velocidade horizontal | -2.75 a +2.75 |
-| 3 | `vel_y` | Velocidade vertical | -2.75 a +2.75 |
-| 4 | `fuel` | Combustível restante | 0 a 200 |
-| 5 | `dist_cp` | Distância ao próximo checkpoint não coletado | 0 a ~1000 |
-| 6 | `dist_st` | Distância até a estação espacial | 0 a ~1000 |
+| 0 | `pos_x` | Posição horizontal da nave |  |
+| 1 | `pos_y` | Posição vertical da nave |  |
+| 2 | `vel_x` | Velocidade horizontal |  |
+| 3 | `vel_y` | Velocidade vertical |  |
+| 4 | `fuel` | Combustível restante |  |
+| 5 | `dist_cp` | Distância ao próximo checkpoint não coletado |  |
+| 6 | `dist_st` | Distância até a estação espacial |  |
 
 ### Espaço de Ações (A)
 
@@ -181,23 +181,11 @@ O ambiente possui **5 ações discretas** (espaço `Discrete(5)`):
 
 | Ação | Descrição | Efeito |
 |---|---|---|
-| `0` | Nada (*coast*) | Nave mantém inércia; **sem custo** de combustível |
-| `1` | Impulso ↑ | Acelera para cima (-Y); custa **3.0** de combustível |
-| `2` | Impulso ↓ | Acelera para baixo (+Y); custa **3.0** de combustível |
-| `3` | Impulso ← | Acelera para esquerda (-X); custa **3.0** de combustível |
-| `4` | Impulso → | Acelera para direita (+X); custa **3.0** de combustível |
 
 **Parâmetros físicos do ambiente:**
 
 | Constante | Valor | Descrição |
 |---|---|---|
-| `G` | 0.75 | Constante gravitacional universal |
-| `THRUST_POWER` | 0.9 px/s² | Aceleração por impulso |
-| `MAX_SPEED` | 2.75 px/s | Velocidade máxima (cap) |
-| `MAX_FUEL` | 200.0 | Combustível inicial |
-| `FUEL_COST_PER_THRUST` | 3.0 | Custo por ação de impulso |
-| `FUEL_PICKUP` | 50.0 | Combustível ganho ao coletar checkpoint |
-| `LAUNCH_ESCAPE_DISTANCE` | 90 px | Distância para ativar gravidade/colisão do planeta inicial |
 
 ### Função de Recompensa (R)
 
@@ -205,13 +193,6 @@ A função de recompensa combina **incentivos contínuos** (a cada passo) com **
 
 | Evento | Recompensa | Tipo |
 |---|---|---|
-| Cada passo de simulação | **−0.01** | Contínua — incentiva rapidez |
-| Cada ação de impulso (ação ≠ 0) | **−0.05** | Contínua — penaliza gasto de combustível |
-| Coletar um checkpoint | **+100.0** | Esparsa — incentiva exploração |
-| Atracar na estação (sucesso) | **+1000.0** | Terminal — objetivo principal |
-| Colisão com planeta | **−1000.0** | Terminal — falha |
-| Sair dos limites da tela | **−1000.0** | Terminal — falha |
-| Combustível zerado | **−1000.0** | Terminal — falha |
 
 **Condições de término do episódio:**
 
