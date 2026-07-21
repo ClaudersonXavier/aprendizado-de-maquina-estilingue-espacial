@@ -152,10 +152,10 @@ runs = list_runs()           # [{id, timestamp, reward, steps, ...}, ...]
 Máquina de estados com 2 fases e sistema de salvamento automático.
 
 **Fases:**
-```
-PLANNING  ──caminho encontrado──→  FLYING
-    ↑                                    │
-    └──checkpoint coletado ou desvio──┘
+```mermaid
+stateDiagram-v2
+    PLANNING --> FLYING : caminho encontrado
+    FLYING --> PLANNING : checkpoint coletado ou desvio
 ```
 
 **Estados do episódio:**
