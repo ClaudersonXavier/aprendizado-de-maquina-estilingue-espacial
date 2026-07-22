@@ -26,11 +26,13 @@ flowchart LR
 
 | Comando | Descricao |
 |---|---|
-| `python train.py` | Treino completo — 80.000 episodios headless |
-| `python watch.py` | Assiste o agente treinado (1 episodio) |
-| `python watch.py --episodios 5` | Assiste N episodios |
+| `python run_qlearning.py --train` | Treino completo — 80.000 episodios headless |
+| `python run_qlearning.py --train --eps N` | Treino com N episodios |
+| `python run_qlearning.py --watch` | Assiste o agente treinado (1 episodio) |
+| `python run_qlearning.py --watch --episodios 5` | Assiste N episodios |
+| `python run_qlearning.py --list` | Lista checkpoints salvos |
 
-> ⚠️ O treino (`train.py`) pode levar horas. A tabela Q treinada ja esta incluida: `q_table_odisseia.pkl`.
+> ⚠️ O treino pode levar horas. A tabela Q treinada ja esta incluida em `game-enviroment/agents/q_learning/checkpoints/`.
 > 💡 A cada 5.000 episodios, o treino exibe um showcase visual para acompanhar o progresso.
 
 ---
@@ -39,11 +41,11 @@ flowchart LR
 
 | Arquivo | Papel |
 |---|---|
-| 🎯 `train.py` | Loop de treino: 80k episodios + showcases periodicos + reward shaping |
-| 👁️ `watch.py` | Carrega tabela Q e exibe o agente jogando (epsilon=0) |
-| 🧠 `q_learning_agent.py` | `AgenteQLearning`: politica ε-greedy, Bellman, persistencia |
-| 📐 `discretizer.py` | `DiscretizadorEstado`: 7D continuo → 6D discreto (36.720 estados) |
-| 💾 `q_table_odisseia.pkl` | Tabela Q treinada (dicionario esparso serializado) |
+| 🚀 `run_qlearning.py` | Entrada unificada: treino, watch e listagem de checkpoints |
+| 🎯 `agents/q_learning/treinador.py` | Loop de treino: 80k episodios + showcases periodicos + reward shaping |
+| 🧠 `agents/q_learning/agent.py` | `AgenteQLearning`: politica ε-greedy, Bellman, persistencia |
+| 📐 `agents/q_learning/discretizer.py` | `DiscretizadorEstado`: 7D continuo → 6D discreto (36.720 estados) |
+| 💾 `agents/q_learning/checkpoints/` | Tabelas Q treinadas (dicionario esparso serializado) |
 
 ---
 

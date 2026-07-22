@@ -123,11 +123,24 @@ Ao iniciar: tela de titulo "ODISSEIA ORBITAL" em neon → pressione **ENTER** �
 
 ### 🤖 Modos com Agentes
 
-| | Agente | Comando rapido |
-|---|---|---|
-| 🧭 | [**Heuristico (A\*)**](docs/agentes/agente-heuristico.md) | `python run_heuristic.py` |
-| 🧬 | [**Genetico**](docs/agentes/agente-genetico.md) | `python run_genetic.py` |
-| 🧠 | [**Q-Learning**](docs/agentes/agente-qlearning.md) | `python train.py` |
+| | Agente | Comando rapido | Descricao |
+|---|---|---|---|
+| 🧭 | [**Heuristico (A\*)**](docs/agentes/agente-heuristico.md) | `python run_heuristic.py` | A* visual ao vivo |
+| 🧬 | [**Genetico**](docs/agentes/agente-genetico.md) | `python run_genetic.py` | Debug/treino/showcase |
+| 🧠 | [**Q-Learning**](docs/agentes/agente-qlearning.md) | `python run_qlearning.py` | Assiste agente treinado |
+
+#### 🧠 Q-Learning — Subcomandos
+
+| Comando | Descricao |
+|---|---|
+| `python run_qlearning.py` | 🎮 Modo watch — assiste o agente treinado (1 episodio) |
+| `python run_qlearning.py --train` | 🏋️ Treino completo — 80.000 episodios headless |
+| `python run_qlearning.py --train --eps 40000` | 🔢 Treino com N episodios |
+| `python run_qlearning.py --watch` | 👁️ Assiste o agente treinado (1 episodio) |
+| `python run_qlearning.py --watch --episodios 5` | 🎬 Assiste N episodios |
+| `python run_qlearning.py --list` | 📋 Lista checkpoints salvos |
+
+> ⚠️ O treino (`--train`) pode levar horas. A tabela Q treinada ja esta incluida em `game-enviroment/agents/q_learning/checkpoints/`.
 
 ---
 
@@ -154,11 +167,7 @@ odisseia-orbital/
 ├── 🚀 run_game.py                ← Atalho: jogar manualmente
 ├── 🧭 run_heuristic.py           ← Atalho: agente heuristico
 ├── 🧬 run_genetic.py             ← Atalho: agente genetico
-├── 🧠 train.py                   ← Treino Q-Learning
-├── 👁️ watch.py                   ← Assistir Q-Learning treinado
-├── 🧠 q_learning_agent.py        ← Classe AgenteQLearning
-├── 📐 discretizer.py             ← Discretizador de estado
-├── 💾 q_table_odisseia.pkl       ← Tabela Q treinada
+├── 🧠 run_qlearning.py           ← Atalho: agente Q-Learning
 ├── 📦 requirements.txt           ← Dependencias
 ├── 📄 README.md                  ← Este arquivo
 │
@@ -183,11 +192,17 @@ odisseia-orbital/
         │   ├── replay_buffer.py
         │   └── 📁 training_data/
         │
-        └── 📁 genetic/           ← 🧬 Agente Genetico
-            ├── ship.py           ← NaveGenetica + CerebroNave (RNA)
-            ├── genetic_env.py    ← AmbienteGenetico
-            ├── treinador.py      ← TreinadorGenetico
-            └── 📁 checkpoints/   ← Cerebros salvos (.pkl)
+        ├── 📁 genetic/           ← 🧬 Agente Genetico
+        │   ├── ship.py           ← NaveGenetica + CerebroNave (RNA)
+        │   ├── genetic_env.py    ← AmbienteGenetico
+        │   ├── treinador.py      ← TreinadorGenetico
+        │   └── 📁 checkpoints/   ← Cerebros salvos (.pkl)
+        │
+        └── 📁 q_learning/        ← 🧠 Agente Q-Learning
+            ├── agent.py          ← AgenteQLearning (ε-greedy + Bellman)
+            ├── discretizer.py    ← DiscretizadorEstado (36.720 estados)
+            ├── treinador.py      ← Loop de treino + reward shaping
+            └── 📁 checkpoints/   ← Tabelas Q salvas (.pkl)
 ```
 
 ---
@@ -267,7 +282,7 @@ Vetor numpy de **7 elementos** continuos:
 |---|---|---|---|
 | 🧭 | [**Busca Heuristica**](docs/agentes/agente-heuristico.md) | A* + PID | `python run_heuristic.py` |
 | 🧬 | [**Algoritmo Genetico**](docs/agentes/agente-genetico.md) | Neuroevolucao | `python run_genetic.py` |
-| 🧠 | [**Q-Learning**](docs/agentes/agente-qlearning.md) | Tabela Q tabular | `python train.py` |
+| 🧠 | [**Q-Learning**](docs/agentes/agente-qlearning.md) | Tabela Q tabular | `python run_qlearning.py` |
 
 ---
 

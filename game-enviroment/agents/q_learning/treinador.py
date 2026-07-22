@@ -1,11 +1,11 @@
 """
-Q-Learning Tabular — Odisseia Orbital
+TreinadorQLearning — Loop de treino para o agente Q-Learning Tabular.
 
 Recompensas originais do ambiente + reward shaping por aproximacao.
 Discretizador de 36720 estados (6 dimensoes).
 
-Treino longo: 40000 episodios headless.
-Showcase: 1 episodio visual greedy a cada 1000 ep + 5 no final.
+Treino longo: 80000 episodios headless.
+Showcase: 1 episodio visual greedy a cada 5000 ep + 5 no final.
 """
 
 import os
@@ -14,18 +14,14 @@ import time
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'game-enviroment'))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'game-enviroment', 'agents'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
 from orbital_env import OrbitalEnv
-from discretizer import DiscretizadorEstado
-from q_learning_agent import AgenteQLearning
 
-N_EPISODIOS = 80000
-LOG_INTERVALO = 500
-SHOWCASE_INTERVALO = 5000
-N_SHOWCASE = 5
-MAX_PASSOS = 2000
+from .discretizer import DiscretizadorEstado
+from .agent import AgenteQLearning
+
+CHECKPOINT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "checkpoints")
 
 ICONES = {
     "docked": "ATRACOU", "crashed_planet": "COLIDIU",
@@ -34,14 +30,19 @@ ICONES = {
 }
 
 
-def main():
+def treinar(n_episodios=80000, alpha=0.05, gamma=0.97, epsilon=1.0,
+            epsilon_min=0.03, epsilon_decay=0.99996, valor_otimista=5.0,
+            log_intervalo=500, showcase_intervalo=5000, max_passos=2000,
+            n_showcase=5):
+    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+
     print("=" * 60)
     print("  ODISSEIA ORBITAL — Q-Learning Tabular")
     print("=" * 60)
     print(f"  Estados        : {DiscretizadorEstado.TOTAL_ESTADOS}")
-    print(f"  Episodios      : {N_EPISODIOS}")
+    print(f"  Episodios      : {n_episodios}")
     print(f"  Recompensa     : ambiente + reward shaping (aproximacao)")
-    print(f"  alpha=0.05  gamma=0.97  eps_min=0.03  eps_decay=0.99996")
+    print(f"  alpha={alpha}  gamma={gamma}  eps_min={epsilon_min}  eps_decay={epsilon_decay}")
     print(f"  Eq. Bellman    : Q(S,A) += a * [R + g * max Q(S',a) - Q(S,A)]")
     print("=" * 60)
 
@@ -53,15 +54,15 @@ def main():
     )
     agente = AgenteQLearning(
         n_acoes=5,
-        alpha=0.05,
-        gamma=0.97,
-        epsilon=1.0,
-        epsilon_min=0.03,
-        epsilon_decay=0.99996,
-        valor_otimista=5.0,
+        alpha=alpha,
+        gamma=gamma,
+        epsilon=epsilon,
+        epsilon_min=epsilon_min,
+        epsilon_decay=epsilon_decay,
+        valor_otimista=valor_otimista,
     )
 
-    print(f"\n[Treinando {N_EPISODIOS} episodios...]")
+    print(f"\n[Treinando {n_episodios} episodios...]")
     print("-" * 60)
 
     t0 = time.time()
@@ -69,7 +70,7 @@ def main():
     recs_janela = []
     max_cps = 0
 
-    for ep in range(N_EPISODIOS):
+    for ep in range(n_episodios):
         obs = env.reset()
         estado = disc.discretizar(obs)
         terminal = False
@@ -78,7 +79,7 @@ def main():
         info = {}
         ep_cps = 0
 
-        while not terminal and ep_pas < MAX_PASSOS:
+        while not terminal and ep_pas < max_passos:
             # 1. ANTES DA ACAO: calcula distancia ate o alvo atual
             pos_nave_atual = np.array([obs[0], obs[1]], dtype=np.float64)
             alvo_atual = disc._encontrar_alvo(pos_nave_atual)
@@ -109,7 +110,7 @@ def main():
             ep_rec += recompensa_total
             ep_pas += 1
 
-        if ep_pas >= MAX_PASSOS:
+        if ep_pas >= max_passos:
             info = {"status": "timeout"}
 
         if ep_cps > max_cps:
@@ -119,8 +120,8 @@ def main():
             sucessos_janela += 1
         agente.decair_epsilon()
 
-        if (ep + 1) % LOG_INTERVALO == 0:
-            tx = sucessos_janela / LOG_INTERVALO * 100
+        if (ep + 1) % log_intervalo == 0:
+            tx = sucessos_janela / log_intervalo * 100
             max_rec = max(recs_janela)
             decorrido = time.time() - t0
             print(
@@ -131,7 +132,7 @@ def main():
             sucessos_janela = 0
             recs_janela = []
 
-        if (ep + 1) % SHOWCASE_INTERVALO == 0:
+        if (ep + 1) % showcase_intervalo == 0:
             epsilon_salvo = agente.epsilon
             agente.epsilon = 0.0
             env_show = OrbitalEnv(render_mode="human")
@@ -147,7 +148,7 @@ def main():
             ep_pas = 0
             info = {}
             ep_cps = 0
-            while not terminal and ep_pas < MAX_PASSOS:
+            while not terminal and ep_pas < max_passos:
                 acao = agente.selecionar_acao(estado)
                 prox_obs, recompensa, terminal, info = env_show.step(acao)
                 prox_estado = disc_show.discretizar(prox_obs)
@@ -179,7 +180,7 @@ def main():
     agente.epsilon = 0.0
     env_show = OrbitalEnv(render_mode="human")
 
-    for ep in range(N_SHOWCASE):
+    for ep in range(n_showcase):
         obs = env_show.reset()
         estado = disc.discretizar(obs)
         terminal = False
@@ -188,7 +189,7 @@ def main():
         info = {}
         ep_cps = 0
 
-        while not terminal and ep_pas < MAX_PASSOS:
+        while not terminal and ep_pas < max_passos:
             acao = agente.selecionar_acao(estado)
             prox_obs, recompensa, terminal, info = env_show.step(acao)
             prox_estado = disc.discretizar(prox_obs)
@@ -200,16 +201,76 @@ def main():
             env_show.render()
 
         icone = ICONES.get(info.get("status", "timeout"), "???")
-        print(f"  {ep + 1}/{N_SHOWCASE} {icone:10s} | Rec: {ep_rec:8.1f} | Passos: {ep_pas:4d} | CPs: {ep_cps}")
+        print(f"  {ep + 1}/{n_showcase} {icone:10s} | Rec: {ep_rec:8.1f} | Passos: {ep_pas:4d} | CPs: {ep_cps}")
 
     env_show.close()
 
-    ckpt = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'q_table_odisseia.pkl')
+    ckpt = os.path.join(CHECKPOINT_DIR, 'q_table_odisseia.pkl')
     agente.salvar(ckpt)
     print("-" * 60)
     print(f"[SALVO] {ckpt}")
     print("=" * 60)
 
+    return agente, disc
+
+def assistir(episodios=1, max_passos=2000):
+    env = OrbitalEnv(render_mode="human")
+    disc = DiscretizadorEstado(
+        checkpoints=env.checkpoints,
+        posicao_estacao=env.station_pos,
+        planetas=env.planets,
+    )
+
+    agente = AgenteQLearning(n_acoes=5)
+    ckpt = os.path.join(CHECKPOINT_DIR, 'q_table_odisseia.pkl')
+    agente.carregar(ckpt)
+    agente.epsilon = 0.0
+
+    print("=" * 50)
+    print("  ODISSEIA ORBITAL — Assistindo Agente Treinado")
+    print("=" * 50)
+    print(f"  Q-table carregada: {len(agente.tabela_q)} estados")
+    print(f"  Exibindo {episodios} episodio(s)...")
+    print("-" * 50)
+
+    for ep in range(episodios):
+        obs = env.reset()
+        estado = disc.discretizar(obs)
+        terminal = False
+        ep_rec = 0.0
+        ep_pas = 0
+        info = {}
+        ep_cps = 0
+
+        while not terminal and ep_pas < max_passos:
+            acao = agente.selecionar_acao(estado)
+            prox_obs, recompensa, terminal, info = env.step(acao)
+            estado = disc.discretizar(prox_obs)
+            if info.get("checkpoint_collected"):
+                ep_cps += 1
+            ep_rec += recompensa
+            ep_pas += 1
+            env.render()
+
+        icone = ICONES.get(info.get("status", "timeout"), "???")
+        print(f"  Ep {ep + 1:2d} | {icone:10s} | Rec: {ep_rec:8.1f} | Passos: {ep_pas:4d} | CPs: {ep_cps}")
+
+    env.close()
+    print("-" * 50)
+    print("  Fim da exibicao.")
+    print("=" * 50)
+
+def listar():
+    import glob
+    arquivos = glob.glob(os.path.join(CHECKPOINT_DIR, "*.pkl"))
+    if arquivos:
+        print("Checkpoints salvos:")
+        for a in sorted(arquivos):
+            nome = os.path.basename(a)
+            tamanho = os.path.getsize(a)
+            print(f"  {nome:30s}  {tamanho:>8,} bytes")
+    else:
+        print("Nenhum checkpoint salvo.")
 
 if __name__ == '__main__':
-    main()
+    treinar()

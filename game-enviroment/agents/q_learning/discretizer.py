@@ -56,7 +56,7 @@ class DiscretizadorEstado:
     COMBUSTIVEL_BAIXO = 80.0     # até 80  → nível 1 (reserva limitada)
     COMBUSTIVEL_MEDIO = 120.0    # até 120 → nível 2 (metade do tanque)
     COMBUSTIVEL_ALTO = 160.0     # até 160 → nível 3 (confortável)
-                                  # acima de 160 → nível 4 (cheio/abundante)
+                                   # acima de 160 → nível 4 (cheio/abundante)
 
     def __init__(self, checkpoints, posicao_estacao, planetas):
         """
