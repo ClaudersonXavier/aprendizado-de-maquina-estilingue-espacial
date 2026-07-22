@@ -8,10 +8,10 @@ Arquitetura modular:
   agents/visualization.py — overlay A*, linha guia e HUD
   agents/replay_buffer.py — save/load de experiencias de sucesso
 
-Modos:
+  Modos:
   python heuristic_agent.py                  → normal (A* + AutoPilot, salva ao vencer)
-  python heuristic_agent.py --trained 001    → carrega run_001, pula A*
-  python heuristic_agent.py --trained latest → carrega o run mais recente
+  python heuristic_agent.py --show 001       → carrega run_001, pula A*
+  python heuristic_agent.py --show latest    → carrega o run mais recente
 """
 
 import sys
@@ -571,7 +571,7 @@ def main_trained(run_id):
 # Entrada
 # ============================================================
 if __name__ == "__main__":
-    if len(sys.argv) >= 3 and sys.argv[1] == "--trained":
+    if len(sys.argv) >= 3 and sys.argv[1] in ("--trained", "--show"):
         main_trained(sys.argv[2])
     elif len(sys.argv) == 2 and sys.argv[1] == "--list":
         runs = list_runs()

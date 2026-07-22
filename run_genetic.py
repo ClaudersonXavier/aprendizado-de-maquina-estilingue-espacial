@@ -211,12 +211,12 @@ def print_help():
     print()
     print("Modos:")
     print("  (sem argumentos)    Debug visual com evolucao live")
-    print("  --train             Treino headless (200 geracoes)")
+    print("  --train             Treino headless (500 geracoes)")
     print("  --train --showcase  Treino com showcases visuais")
-    print("  --train --gens N    Treino com N geracoes")
+    print("  --train --eps N     Treino com N geracoes")
     print("  --train --pop N     Treino com N naves")
     print("  --show              Showcase do melhor cerebro (best.pkl)")
-    print("  --show --gen N      Showcase de uma geracao especifica")
+    print("  --show N            Showcase de uma geracao especifica")
     print("  --list              Listar checkpoints salvos")
 
 
@@ -232,7 +232,7 @@ def main():
         geracoes = 500
         showcase = "--showcase" in args
         for i, arg in enumerate(args):
-            if arg == "--gens" and i + 1 < len(args):
+            if arg in ("--eps", "--gens") and i + 1 < len(args):
                 geracoes = int(args[i + 1])
             elif arg == "--pop" and i + 1 < len(args):
                 pop_size = int(args[i + 1])
@@ -244,6 +244,12 @@ def main():
         for i, arg in enumerate(args):
             if arg == "--gen" and i + 1 < len(args):
                 gen_id = args[i + 1]
+        if gen_id is None:
+            for i, arg in enumerate(args):
+                if arg == "--show" and i + 1 < len(args):
+                    next_arg = args[i + 1]
+                    if not next_arg.startswith("-"):
+                        gen_id = next_arg
         modo_show(gen_id)
         return
 

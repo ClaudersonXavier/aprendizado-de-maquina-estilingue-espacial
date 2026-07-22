@@ -27,8 +27,8 @@ flowchart LR
 | Comando | Descricao |
 |---|---|
 | `python run_heuristic.py` | Executa o agente com visualizacao completa |
-| `python run_heuristic.py --trained latest` | Replay da run mais recente |
-| `python run_heuristic.py --trained 001` | Replay de uma run especifica |
+| `python run_heuristic.py --show` | Replay da run mais recente |
+| `python run_heuristic.py --show 001` | Replay de uma run especifica |
 | `python run_heuristic.py --list` | Lista todas as runs salvas |
 
 ---
@@ -78,7 +78,7 @@ game-enviroment/agents/heuristic_goal/training_data/
 └── ...
 ```
 
-> 💡 Runs sao salvas automaticamente. Use `--trained` para reproduzir qualquer uma depois.
+> 💡 Runs sao salvas automaticamente. Use `--show` para reproduzir qualquer uma depois.
 
 ---
 

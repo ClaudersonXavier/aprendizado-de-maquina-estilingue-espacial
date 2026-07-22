@@ -10,7 +10,9 @@ from agents.heuristic_goal.heuristic_agent import main, main_trained
 from agents.heuristic_goal.replay_buffer import list_runs
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 3 and sys.argv[1] == "--trained":
+    if len(sys.argv) == 2 and sys.argv[1] in ("--trained", "--show"):
+        main_trained("latest")
+    elif len(sys.argv) >= 3 and sys.argv[1] in ("--trained", "--show"):
         main_trained(sys.argv[2])
     elif len(sys.argv) == 2 and sys.argv[1] == "--list":
         runs = list_runs()

@@ -28,8 +28,8 @@ flowchart LR
 |---|---|
 | `python run_qlearning.py --train` | Treino completo — 80.000 episodios headless |
 | `python run_qlearning.py --train --eps N` | Treino com N episodios |
-| `python run_qlearning.py --watch` | Assiste o agente treinado (1 episodio) |
-| `python run_qlearning.py --watch --episodios 5` | Assiste N episodios |
+| `python run_qlearning.py --show` | Assiste o agente treinado (1 episodio) |
+| `python run_qlearning.py --show --episodios 5` | Assiste N episodios |
 | `python run_qlearning.py --list` | Lista checkpoints salvos |
 
 > ⚠️ O treino pode levar horas. A tabela Q treinada ja esta incluida em `game-enviroment/agents/q_learning/checkpoints/`.

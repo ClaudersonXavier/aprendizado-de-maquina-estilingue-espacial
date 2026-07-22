@@ -226,8 +226,6 @@ class OrbitalEnv:
                 self._launch_escaped = True
 
         for i, planet in enumerate(self.planets):
-            if not self._launch_escaped and i == cfg.LAUNCH_PLANET_INDEX:
-                continue
             if phys.check_circle_collision(
                 self.ship_pos, cfg.SHIP_RADIUS,
                 planet["pos"], planet["radius"],
@@ -271,7 +269,7 @@ class OrbitalEnv:
             float(self.station_pos[0]),
             float(self.station_pos[1]),
         )
-        if phys.check_circle_rect_collision(
+        if self._all_checkpoints_collected() and phys.check_circle_rect_collision(
             self.ship_pos, cfg.SHIP_RADIUS,
             station_center, cfg.STATION_WIDTH, cfg.STATION_HEIGHT,
         ):
@@ -556,18 +554,7 @@ class OrbitalEnv:
                          (wx - 2, wy - 2, 4, 4))
 
     def _draw_launch_planet(self, px, py, radius, color):
-        start_angle = -math.pi / 3
-        end_angle = math.pi / 3
-        num_points = 16
-        pts = [(px, py)]
-        for j in range(num_points + 1):
-            angle = start_angle + (end_angle - start_angle) * j / num_points
-            pts.append((
-                int(px + radius * math.cos(angle)),
-                int(py + radius * math.sin(angle)),
-            ))
-        pygame.draw.polygon(self.canvas, color, pts)
-
+        pygame.draw.circle(self.canvas, color, (px, py), radius)
         self._draw_circle(self.canvas, px, py, radius, cfg.COLOR_BLACK, 2)
 
         plat_x = px + radius - 6
@@ -614,6 +601,9 @@ class OrbitalEnv:
             ]
             pygame.draw.polygon(self.canvas, dark, inner)
 
+    def _all_checkpoints_collected(self):
+        return all(cp["collected"] for cp in self.checkpoints)
+
     # Estacao final
     def _draw_station(self):
         scale = cfg.RENDER_WIDTH / cfg.SCREEN_WIDTH
@@ -622,27 +612,35 @@ class OrbitalEnv:
         hw = int(cfg.STATION_WIDTH * scale) // 2
         hh = int(cfg.STATION_HEIGHT * scale) // 2
         current_time = pygame.time.get_ticks()
+        locked = not self._all_checkpoints_collected()
 
-        if self.ship_pos is not None:
-            dist = float(np.linalg.norm(self.ship_pos - self.station_pos))
-            if dist < 150:
-                sxs = int(self.ship_pos[0] * scale)
-                sys = int(self.ship_pos[1] * scale)
-                dx = sx - sxs
-                dy = sy - sys
-                steps = int(dist / 8)
-                for d in range(steps):
-                    t = d / max(steps, 1)
-                    if d % 2 == 0:
-                        px = int(sxs + dx * t)
-                        py = int(sys + dy * t)
-                        if 0 <= px < cfg.RENDER_WIDTH and 0 <= py < cfg.RENDER_HEIGHT:
-                            self.canvas.set_at((px, py), cfg.COLOR_CYAN)
+        body_color = cfg.COLOR_DARK_GRAY if locked else cfg.COLOR_GRAY
+        inner_border = cfg.COLOR_DARK_GRAY if locked else cfg.COLOR_BLACK
+        accent_color = cfg.COLOR_DARK_GRAY if locked else cfg.COLOR_CYAN
+        panel_color = cfg.COLOR_GRAY if locked else cfg.COLOR_CYAN
+        panel_fill = cfg.COLOR_DARK_GRAY
+
+        if not locked:
+            if self.ship_pos is not None:
+                dist = float(np.linalg.norm(self.ship_pos - self.station_pos))
+                if dist < 150:
+                    sxs = int(self.ship_pos[0] * scale)
+                    sys = int(self.ship_pos[1] * scale)
+                    dx = sx - sxs
+                    dy = sy - sys
+                    steps = int(dist / 8)
+                    for d in range(steps):
+                        t = d / max(steps, 1)
+                        if d % 2 == 0:
+                            px = int(sxs + dx * t)
+                            py = int(sys + dy * t)
+                            if 0 <= px < cfg.RENDER_WIDTH and 0 <= py < cfg.RENDER_HEIGHT:
+                                self.canvas.set_at((px, py), cfg.COLOR_CYAN)
 
         body_rect = pygame.Rect(sx - hw, sy - hh, hw * 2, hh * 2)
-        pygame.draw.rect(self.canvas, cfg.COLOR_GRAY, body_rect)
-        pygame.draw.rect(self.canvas, cfg.COLOR_BLACK, body_rect, 2)
-        pygame.draw.rect(self.canvas, cfg.COLOR_CYAN, body_rect, 1)
+        pygame.draw.rect(self.canvas, body_color, body_rect)
+        pygame.draw.rect(self.canvas, inner_border, body_rect, 2)
+        pygame.draw.rect(self.canvas, accent_color, body_rect, 1)
 
         panel_w = 5
         panel_h = 10
@@ -650,15 +648,22 @@ class OrbitalEnv:
             panel_x = sx + side * (hw + panel_w + 3)
             panel_y = sy - panel_h // 2
             panel_rect = pygame.Rect(panel_x - panel_w // 2, panel_y, panel_w, panel_h)
-            pygame.draw.rect(self.canvas, cfg.COLOR_DARK_GRAY, panel_rect)
-            pygame.draw.rect(self.canvas, cfg.COLOR_CYAN, panel_rect, 1)
-            for gy in range(panel_y + 2, panel_y + panel_h - 1, 2):
-                pygame.draw.line(self.canvas, cfg.COLOR_GRAY,
-                                 (panel_x - panel_w // 2 + 1, gy),
-                                 (panel_x + panel_w // 2 - 1, gy), 1)
+            pygame.draw.rect(self.canvas, panel_fill, panel_rect)
+            pygame.draw.rect(self.canvas, accent_color, panel_rect, 1)
+            if not locked:
+                for gy in range(panel_y + 2, panel_y + panel_h - 1, 2):
+                    pygame.draw.line(self.canvas, cfg.COLOR_GRAY,
+                                     (panel_x - panel_w // 2 + 1, gy),
+                                     (panel_x + panel_w // 2 - 1, gy), 1)
 
-        dock_on = (current_time // 300) % 2
-        dock_color = cfg.COLOR_GREEN if dock_on else cfg.COLOR_DARK_GRAY
+        if locked:
+            dock_color = cfg.COLOR_DARK_GRAY
+            lock_label = PixelFont.render("LOCKED", cfg.COLOR_DARK_GRAY)
+            self.canvas.blit(lock_label, (sx - lock_label.get_width() // 2, sy - hh - 10))
+        else:
+            dock_on = (current_time // 300) % 2
+            dock_color = cfg.COLOR_GREEN if dock_on else cfg.COLOR_DARK_GRAY
+
         pygame.draw.rect(self.canvas, dock_color, (sx - 2, sy - 2, 5, 5))
         pygame.draw.rect(self.canvas, cfg.COLOR_BLACK, (sx - 3, sy - 3, 7, 7), 1)
 

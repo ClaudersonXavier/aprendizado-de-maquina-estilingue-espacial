@@ -133,11 +133,11 @@ Ao iniciar: tela de titulo "ODISSEIA ORBITAL" em neon → pressione **ENTER** �
 
 | Comando | Descricao |
 |---|---|
-| `python run_qlearning.py` | 🎮 Modo watch — assiste o agente treinado (1 episodio) |
+| `python run_qlearning.py` | 🎮 Modo show — assiste o agente treinado (1 episodio) |
 | `python run_qlearning.py --train` | 🏋️ Treino completo — 80.000 episodios headless |
 | `python run_qlearning.py --train --eps 40000` | 🔢 Treino com N episodios |
-| `python run_qlearning.py --watch` | 👁️ Assiste o agente treinado (1 episodio) |
-| `python run_qlearning.py --watch --episodios 5` | 🎬 Assiste N episodios |
+| `python run_qlearning.py --show` | 👁️ Assiste o agente treinado (1 episodio) |
+| `python run_qlearning.py --show --episodios 5` | 🎬 Assiste N episodios |
 | `python run_qlearning.py --list` | 📋 Lista checkpoints salvos |
 
 > ⚠️ O treino (`--train`) pode levar horas. A tabela Q treinada ja esta incluida em `game-enviroment/agents/q_learning/checkpoints/`.

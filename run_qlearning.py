@@ -2,11 +2,11 @@
 run_qlearning.py — Entrada unificada para o agente Q-Learning Tabular.
 
 Uso:
-  python run_qlearning.py                    # modo watch (padrao, 1 episodio)
+  python run_qlearning.py                    # modo show (padrao, 1 episodio)
   python run_qlearning.py --train            # treino headless (80000 episodios)
   python run_qlearning.py --train --eps 1000 # treino com N episodios
-  python run_qlearning.py --watch            # assiste o agente treinado
-  python run_qlearning.py --watch --episodios 5  # assiste N episodios
+  python run_qlearning.py --show             # assiste o agente treinado
+  python run_qlearning.py --show --episodios 5  # assiste N episodios
   python run_qlearning.py --list             # lista checkpoints salvos
 """
 
@@ -28,8 +28,8 @@ def print_help():
     print("  (sem argumentos)       Assiste o agente treinado (1 episodio)")
     print("  --train                Treino headless (80000 episodios)")
     print("  --train --eps N        Treino com N episodios")
-    print("  --watch                Assiste o agente treinado")
-    print("  --watch --episodios N  Assiste N episodios")
+    print("  --show                 Assiste o agente treinado")
+    print("  --show --episodios N   Assiste N episodios")
     print("  --list                 Listar checkpoints salvos")
 
 
@@ -52,7 +52,7 @@ def main():
         treinar(n_episodios=n_episodios)
         return
 
-    if "--watch" in args:
+    if "--show" in args or "--watch" in args:
         n_episodios = 1
         for i, arg in enumerate(args):
             if arg == "--episodios" and i + 1 < len(args):

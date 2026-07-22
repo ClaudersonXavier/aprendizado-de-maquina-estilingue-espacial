@@ -182,8 +182,8 @@ cd game-enviroment
 python agents/heuristic_agent.py
 
 # Modo treinado — carrega waypoints salvos, sem A*
-python agents/heuristic_agent.py --trained 001
-python agents/heuristic_agent.py --trained latest
+python agents/heuristic_agent.py --show 001
+python agents/heuristic_agent.py --show latest
 
 # Listar runs salvos
 python agents/heuristic_agent.py --list
@@ -206,7 +206,7 @@ python agents/heuristic_agent.py --list
    - Ordem dos checkpoints coletados
    - Estatísticas (steps, thrusts, fuel, reward)
 3. O arquivo é salvo em `training_data/run_NNN.json` (auto-incrementado)
-4. No modo `--trained`, o agente carrega os waypoints do JSON e **pula o A***
+4. No modo `--show`, o agente carrega os waypoints do JSON e **pula o A***
 5. O AutoPilot ainda roda com gravidade e evasão — só o planejamento é reaproveitado
 
 Isso permite:
