@@ -13,6 +13,7 @@ import sys
 import time
 
 import numpy as np
+import pygame
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
@@ -230,30 +231,53 @@ def assistir(episodios=1, max_passos=2000):
     print("  ODISSEIA ORBITAL — Assistindo Agente Treinado")
     print("=" * 50)
     print(f"  Q-table carregada: {len(agente.tabela_q)} estados")
-    print(f"  Exibindo {episodios} episodio(s)...")
     print("-" * 50)
 
-    for ep in range(episodios):
-        obs = env.reset()
-        estado = disc.discretizar(obs)
-        terminal = False
-        ep_rec = 0.0
-        ep_pas = 0
-        info = {}
-        ep_cps = 0
+    obs = env.reset()
+    estado = disc.discretizar(obs)
+    ep_rec = 0.0
+    ep_pas = 0
+    ep_cps = 0
+    info_printed = False
+    ep_count = 0
+    running = True
 
-        while not terminal and ep_pas < max_passos:
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                elif event.key == pygame.K_r:
+                    obs = env.reset()
+                    estado = disc.discretizar(obs)
+                    ep_rec = 0.0
+                    ep_pas = 0
+                    ep_cps = 0
+                    info_printed = False
+
+        if not env.done and ep_pas < max_passos:
             acao = agente.selecionar_acao(estado)
             prox_obs, recompensa, terminal, info = env.step(acao)
-            estado = disc.discretizar(prox_obs)
+            prox_estado = disc.discretizar(prox_obs)
             if info.get("checkpoint_collected"):
                 ep_cps += 1
+            estado = prox_estado
+            obs = prox_obs
             ep_rec += recompensa
             ep_pas += 1
-            env.render()
 
-        icone = ICONES.get(info.get("status", "timeout"), "???")
-        print(f"  Ep {ep + 1:2d} | {icone:10s} | Rec: {ep_rec:8.1f} | Passos: {ep_pas:4d} | CPs: {ep_cps}")
+        env.render()
+
+        if env.done and not info_printed:
+            icone = ICONES.get(env.last_info.get("status", "timeout"), "???")
+            ep_count += 1
+            collected = sum(1 for cp in env.checkpoints if cp["collected"])
+            print(f"  Ep {ep_count:2d} | {icone:10s} | Rec: {ep_rec:8.1f} | Passos: {ep_pas:4d} | CPs: {collected}")
+            info_printed = True
+            if ep_count >= episodios:
+                running = False
 
     env.close()
     print("-" * 50)
