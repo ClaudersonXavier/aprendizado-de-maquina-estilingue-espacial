@@ -14,10 +14,11 @@ import config as cfg
 
 class AutoPilot:
 
-    def __init__(self, path, planets):
+    def __init__(self, path, planets, is_docking=False):
         self.waypoints = list(path)
         self.planets = list(planets)
-        self.tolerance = 15.0
+        self.tolerance = 20.0
+        self.is_docking = is_docking
 
     def get_action(self, obs):
         x, y = obs[0], obs[1]
@@ -52,12 +53,17 @@ class AutoPilot:
         grav_toward = (gx * dx + gy * dy) / dist
 
         need_thrust = False
+        alvo_final = len(self.waypoints) == 1
 
-        if vel_toward < 0.3:
+        if vel_toward < 0.6:
             need_thrust = True
         elif grav_toward < -0.08 and speed > 0.3:
             need_thrust = True
-        elif vel_toward < 0.8 and dist > 120:
+        elif vel_toward < 1.3 and dist > 80 and not alvo_final:
+            need_thrust = True
+        elif alvo_final and dist < 40 and vel_toward < 0.3 and not self.is_docking:
+            need_thrust = True            
+        elif alvo_final and vel_toward < 2.7 and self.is_docking:
             need_thrust = True
 
         if not need_thrust:
@@ -81,7 +87,11 @@ class AutoPilot:
         while self.waypoints:
             wx, wy = self.waypoints[0]
             dist = math.hypot(x - wx, y - wy)
-            if dist < self.tolerance:
+
+            alvo_final = len(self.waypoints) == 1
+            current_tolerance = 5.0 if alvo_final else self.tolerance
+
+            if dist < current_tolerance:
                 self.waypoints.pop(0)
             elif len(self.waypoints) >= 2:
                 nx, ny = self.waypoints[1]

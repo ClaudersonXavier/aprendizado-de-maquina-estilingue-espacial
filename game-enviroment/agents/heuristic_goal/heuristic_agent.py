@@ -33,6 +33,7 @@ from .astar_planner import AStarPlanner
 from .auto_pilot import AutoPilot
 from .visualization import (
     simplify_path,
+    capture_game_snapshot,
     draw_a_star_overlay,
     draw_web_lines,
     draw_grid_overlay,
@@ -91,6 +92,7 @@ def main():
     planning_background = None
     start_cell = grid_map.pos_to_cell(*ship_pos)
     path_hold_counter = 0
+    last_search_state = None
 
     running = True
 
@@ -140,7 +142,7 @@ def main():
         if phase == "planning":
             if planning_background is None:
                 env.render()
-                planning_background = env.screen.copy()
+                planning_background = capture_game_snapshot(env)
             else:
                 env.screen.blit(planning_background, (0, 0))
 
@@ -148,6 +150,21 @@ def main():
 
             if path_hold_counter > 0:
                 path_hold_counter -= 1
+
+                if last_search_state is not None:
+                    draw_grid_overlay(env.screen)
+                    draw_a_star_overlay(env.screen, last_search_state)
+                    draw_web_lines(env.screen, last_search_state.get("came_from", {}))
+                    draw_start_beacon(env.screen, start_cell)
+                    draw_blocked_exclamations(
+                        env.screen,
+                        last_search_state.get("blocked", []),
+                        env.planets,
+                    )
+
+                if current_segment_path:
+                    draw_path_line(env.screen, current_segment_path)
+
                 if path_hold_counter == 0:
                     phase = "flying"
                     last_replan_time = pygame.time.get_ticks()
@@ -164,6 +181,7 @@ def main():
                         break
 
             if search_state is not None:
+                last_search_state = search_state
                 draw_grid_overlay(env.screen)
                 draw_a_star_overlay(env.screen, search_state)
                 draw_web_lines(env.screen, search_state.get("came_from", {}))
@@ -181,14 +199,17 @@ def main():
                 if found_path is not None:
                     a_star_gen = None
 
+                    uncollected = [cp for cp in env.checkpoints if not cp["collected"]]
+                    is_dock = len(uncollected) == 0
+
                     if found_path:
                         current_segment_raw = list(found_path)
                         path = simplify_path(found_path)
-                        autopilot = AutoPilot(path, env.planets)
+                        autopilot = AutoPilot(path, env.planets, is_docking=is_dock)
                     else:
                         current_segment_raw = [ship_pos, goal_pos]
                         path = [ship_pos, goal_pos]
-                        autopilot = AutoPilot(path, env.planets)
+                        autopilot = AutoPilot(path, env.planets, is_docking=is_dock)
 
                     current_segment_path = path
 
@@ -494,13 +515,15 @@ def main_trained(run_id):
             if autopilot is None:
                 seg = segments[seg_idx]
                 path = [list(wp) for wp in seg["waypoints"]]
-                autopilot = AutoPilot(path, env.planets)
+                is_dock = seg_idx == len(segments) - 1
+                autopilot = AutoPilot(path, env.planets, is_docking=is_dock)
             if not autopilot.has_path():
                 seg_idx += 1
                 if seg_idx < len(segments):
                     seg = segments[seg_idx]
                     path = [list(wp) for wp in seg["waypoints"]]
-                    autopilot = AutoPilot(path, env.planets)
+                    is_dock = seg_idx == len(segments) - 1
+                    autopilot = AutoPilot(path, env.planets, is_docking=is_dock)
                 else:
                     autopilot = None
             action = autopilot.get_action(obs) if autopilot else 0
